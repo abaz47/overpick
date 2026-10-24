@@ -124,6 +124,11 @@ API_FOOTBALL_MIN_INTERVAL = float(
 )
 
 MODEL_N = int(os.environ.get("MODEL_N", "5"))
+MODEL_MIN_N = int(os.environ.get("MODEL_MIN_N", "3"))
+MODEL_SHRINK_K = float(os.environ.get("MODEL_SHRINK_K", "3"))
+MODEL_LAST_WEIGHT = float(
+    os.environ.get("MODEL_LAST_WEIGHT", "0.6"),
+)
 
 SIGNAL_THRESHOLD_O15 = float(
     os.environ.get("SIGNAL_THRESHOLD_O15", "0.82"),
