@@ -1,6 +1,6 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -40,10 +40,8 @@
             <a class="nav-link
                       {% if request.resolver_match.url_name == 'history' %}active{% endif %}"
                href="{% url 'history' %}">History</a>
-            <a class="nav-link
-                      {% if request.resolver_match.url_name == 'leagues' %}active{% endif %}"
-               href="{% url 'leagues' %}">Leagues</a>
           </div>
+          <span class="navbar-text ms-lg-auto small text-white-50">Times in MSK</span>
         </div>
       </div>
     </nav>

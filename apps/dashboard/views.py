@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from django.core.paginator import Paginator
-from django.db.models import Avg, Count, Q, QuerySet
+from django.db.models import Avg, QuerySet
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
@@ -26,6 +26,9 @@ FINISHED = (
     Fixture.Status.AET,
     Fixture.Status.PEN,
 )
+# Upcoming horizon presets (hours from now, MSK clock).
+HOUR_WINDOWS = ("3", "6", "9", "12", "24", "48")
+DEFAULT_HOURS = "48"
 PAGE_SIZE = 50
 
 
@@ -38,26 +41,15 @@ def _parse_int(raw: str | None) -> int | None:
         return None
 
 
-def _days_window(
-    days_raw: str | None,
-) -> tuple[datetime | None, datetime | None]:
-    """Return [start, end) for upcoming day filters."""
+def _hours_window(
+    hours_raw: str | None,
+) -> tuple[datetime, datetime]:
+    """Return [now, now+N hours) for upcoming filters."""
     now = timezone.now()
-    today = timezone.localtime(now).replace(
-        hour=0,
-        minute=0,
-        second=0,
-        microsecond=0,
-    )
-    if days_raw == "today":
-        return today, today + timedelta(days=1)
-    if days_raw == "tomorrow":
-        start = today + timedelta(days=1)
-        return start, start + timedelta(days=1)
-    if days_raw in {"3", "7", "14"}:
-        return now, now + timedelta(days=int(days_raw))
-    # "all" or unknown → from now onward
-    return now, None
+    hours = DEFAULT_HOURS
+    if hours_raw in HOUR_WINDOWS:
+        hours = hours_raw
+    return now, now + timedelta(hours=int(hours))
 
 
 def _league_choices() -> list[dict[str, Any]]:
@@ -109,31 +101,30 @@ def upcoming(request: HttpRequest) -> HttpResponse:
     market = request.GET.get("market", "o25")
     if market not in MARKET_FIELD:
         market = "o25"
-    days_raw = request.GET.get("days", "7")
+    hours_raw = request.GET.get("hours", DEFAULT_HOURS)
+    if hours_raw not in HOUR_WINDOWS:
+        hours_raw = DEFAULT_HOURS
     league_api_id = _parse_int(request.GET.get("league"))
     signals_only = request.GET.get("signals") == "1"
-    sort_field = MARKET_FIELD[market]
 
-    start, end = _days_window(days_raw)
+    start, end = _hours_window(hours_raw)
     qs = Prediction.objects.filter(
         fixture__status__in=(
             Fixture.Status.NS,
             Fixture.Status.TBD,
         ),
-        fixture__kickoff_at__gt=timezone.now(),
+        fixture__kickoff_at__gte=start,
+        fixture__kickoff_at__lt=end,
     ).select_related(
         "fixture",
         "fixture__home",
         "fixture__away",
         "fixture__league",
     )
-    if start is not None:
-        qs = qs.filter(fixture__kickoff_at__gte=start)
-    if end is not None:
-        qs = qs.filter(fixture__kickoff_at__lt=end)
     qs = _apply_league_filter(qs, league_api_id)
     qs = _apply_signal_filter(qs, market, signals_only)
-    qs = qs.order_by(f"-{sort_field}", "fixture__kickoff_at")
+    # Nearest kickoff first (stored UTC, displayed MSK).
+    qs = qs.order_by("fixture__kickoff_at", "pk")
 
     paginator = Paginator(qs, PAGE_SIZE)
     page = paginator.get_page(request.GET.get("page"))
@@ -144,11 +135,10 @@ def upcoming(request: HttpRequest) -> HttpResponse:
         {
             "page": page,
             "market": market,
-            "days": days_raw,
+            "hours": hours_raw,
             "league_api_id": league_api_id,
             "signals_only": signals_only,
             "leagues": _league_choices(),
-            "sort_field": sort_field,
         },
     )
 
@@ -214,7 +204,6 @@ def history(request: HttpRequest) -> HttpResponse:
     qs = _apply_signal_filter(qs, market, signals_only)
     qs = qs.order_by("-fixture__kickoff_at")
 
-    # KPI on the filtered queryset (before pagination).
     kpi = _history_kpi(qs)
 
     paginator = Paginator(qs, PAGE_SIZE)
@@ -253,7 +242,6 @@ def _history_kpi(qs: QuerySet[Prediction]) -> dict:
             "o35": total >= 4,
         }
         for key, hit in checks.items():
-            # Count all rows in filtered set.
             totals[key][1] += 1
             if hit:
                 totals[key][0] += 1
@@ -265,7 +253,6 @@ def _history_kpi(qs: QuerySet[Prediction]) -> dict:
             "rate": (hits / n) if n else None,
         }
     result["count"] = len(rows)
-    # Average predicted probs for calibration glance.
     agg = qs.aggregate(
         avg15=Avg("p_over_15"),
         avg25=Avg("p_over_25"),
@@ -275,32 +262,3 @@ def _history_kpi(qs: QuerySet[Prediction]) -> dict:
     result["avg25"] = agg["avg25"]
     result["avg35"] = agg["avg35"]
     return result
-
-
-@require_GET
-def leagues(request: HttpRequest) -> HttpResponse:
-    """Active leagues with fixture / prediction counts."""
-    qs = (
-        League.objects.filter(is_active=True)
-        .annotate(
-            fixtures_n=Count("fixtures", distinct=True),
-            preds_n=Count(
-                "fixtures__prediction",
-                distinct=True,
-            ),
-            upcoming_n=Count(
-                "fixtures",
-                filter=Q(
-                    fixtures__status=Fixture.Status.NS,
-                    fixtures__kickoff_at__gt=timezone.now(),
-                ),
-                distinct=True,
-            ),
-        )
-        .order_by("country", "name", "-season")
-    )
-    return render(
-        request,
-        "dashboard/leagues.html",
-        {"leagues": qs},
-    )

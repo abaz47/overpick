@@ -6,37 +6,37 @@
 {% block content %}
   <div class="d-flex justify-content-between align-items-center mb-2">
     <h1 class="h3 mb-0">History</h1>
-    <span class="text-muted small">{{ kpi.count }} матчей</span>
+    <span class="text-muted small">{{ kpi.count }} matches</span>
   </div>
   <form method="get" class="row g-2 align-items-end mb-3">
     <div class="col-6 col-md-2">
-      <label class="form-label small mb-1" for="days">Период</label>
+      <label class="form-label small mb-1" for="days">Period</label>
       <select class="form-select form-select-sm" name="days" id="days">
         <option value="7"
-                {% if days == "7" %}selected{% endif %}>7 дней</option>
+                {% if days == "7" %}selected{% endif %}>7 days</option>
         <option value="14"
-                {% if days == "14" %}selected{% endif %}>14 дней</option>
+                {% if days == "14" %}selected{% endif %}>14 days</option>
         <option value="30"
-                {% if days == "30" %}selected{% endif %}>30 дней</option>
+                {% if days == "30" %}selected{% endif %}>30 days</option>
         <option value="90"
-                {% if days == "90" %}selected{% endif %}>90 дней</option>
+                {% if days == "90" %}selected{% endif %}>90 days</option>
       </select>
     </div>
     <div class="col-6 col-md-2">
-      <label class="form-label small mb-1" for="market">Сигнал</label>
+      <label class="form-label small mb-1" for="market">Signal market</label>
       <select class="form-select form-select-sm" name="market" id="market">
         <option value="o15"
-                {% if market == "o15" %}selected{% endif %}>О1.5</option>
+                {% if market == "o15" %}selected{% endif %}>O1.5</option>
         <option value="o25"
-                {% if market == "o25" %}selected{% endif %}>О2.5</option>
+                {% if market == "o25" %}selected{% endif %}>O2.5</option>
         <option value="o35"
-                {% if market == "o35" %}selected{% endif %}>О3.5</option>
+                {% if market == "o35" %}selected{% endif %}>O3.5</option>
       </select>
     </div>
     <div class="col-12 col-md-4">
-      <label class="form-label small mb-1" for="league">Лига</label>
+      <label class="form-label small mb-1" for="league">League</label>
       <select class="form-select form-select-sm" name="league" id="league">
-        <option value="">Все лиги</option>
+        <option value="">All leagues</option>
         {% for lg in leagues %}
           <option value="{{ lg.api_id }}"
                   {% if league_api_id == lg.api_id %}selected{% endif %}>
@@ -54,19 +54,18 @@
                id="signals"
                {% if signals_only %}checked{% endif %}>
         <label class="form-check-label small"
-               for="signals">Только сигналы</label>
+               for="signals">Signals only</label>
       </div>
     </div>
     <div class="col-6 col-md-2">
-      <button type="submit"
-              class="btn btn-sm btn-primary w-100">Применить</button>
+      <button type="submit" class="btn btn-sm btn-primary w-100">Apply</button>
     </div>
   </form>
   <div class="row g-2 mb-4">
     <div class="col-md-4">
       <div class="card shadow-sm">
         <div class="card-body py-3">
-          <div class="text-muted small">Hit-rate О1.5</div>
+          <div class="text-muted small">Hit-rate O1.5</div>
           <div class="fs-4">
             {% if kpi.o15.rate is not None %}
               {{ kpi.o15.rate|pct }}
@@ -84,7 +83,7 @@
     <div class="col-md-4">
       <div class="card shadow-sm">
         <div class="card-body py-3">
-          <div class="text-muted small">Hit-rate О2.5</div>
+          <div class="text-muted small">Hit-rate O2.5</div>
           <div class="fs-4">
             {% if kpi.o25.rate is not None %}
               {{ kpi.o25.rate|pct }}
@@ -102,7 +101,7 @@
     <div class="col-md-4">
       <div class="card shadow-sm">
         <div class="card-body py-3">
-          <div class="text-muted small">Hit-rate О3.5</div>
+          <div class="text-muted small">Hit-rate O3.5</div>
           <div class="fs-4">
             {% if kpi.o35.rate is not None %}
               {{ kpi.o35.rate|pct }}
@@ -122,20 +121,20 @@
     <table class="table table-sm table-hover bg-white shadow-sm">
       <thead class="table-light">
         <tr>
-          <th>Дата</th>
-          <th>Матч</th>
-          <th class="text-end">Счёт</th>
-          <th class="text-end">P О2.5</th>
-          <th class="text-center">О1.5</th>
-          <th class="text-center">О2.5</th>
-          <th class="text-center">О3.5</th>
+          <th>Date (MSK)</th>
+          <th>Match</th>
+          <th class="text-end">Score</th>
+          <th class="text-end">P O2.5</th>
+          <th class="text-center">O1.5</th>
+          <th class="text-center">O2.5</th>
+          <th class="text-center">O3.5</th>
         </tr>
       </thead>
       <tbody>
         {% for pred in page %}
           {% with f=pred.fixture %}
             <tr>
-              <td class="small text-nowrap">{{ f.kickoff_at|date:"d.m.Y" }}</td>
+              <td class="small text-nowrap">{{ f.kickoff_at|date:"d.m.Y H:i" }}</td>
               <td>
                 <a href="{% url 'match_detail' f.pk %}"
                    class="text-decoration-none">
@@ -168,9 +167,8 @@
         {% empty %}
           <tr>
             <td colspan="7" class="text-center text-muted py-4">
-              Нет завершённых матчей с прогнозами за период.
-              История появится после того, как сыграют матчи
-              с заранее сохранённым Prediction.
+              No finished matches with locked predictions in this period.
+              History fills in after fixtures with a saved Prediction kick off.
             </td>
           </tr>
         {% endfor %}

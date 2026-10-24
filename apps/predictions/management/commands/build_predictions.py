@@ -1,5 +1,6 @@
 """Build Poisson totals predictions for upcoming matches."""
 
+from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from apps.predictions.services.build import (
@@ -17,11 +18,18 @@ class Command(BaseCommand):
     )
 
     def add_arguments(self, parser) -> None:
+        default_days = int(
+            getattr(settings, "PREDICTION_HORIZON_DAYS", 3),
+        )
         parser.add_argument(
             "--days",
             type=int,
-            default=None,
-            help="Only fixtures within N days (default: all)",
+            default=default_days,
+            help=(
+                "Only fixtures within N days "
+                f"(default: {default_days}; "
+                "0 = all upcoming)"
+            ),
         )
         parser.add_argument(
             "--force",
@@ -30,8 +38,11 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options) -> None:
+        days = options["days"]
+        if days == 0:
+            days = None
         stats = build_predictions(
-            days=options["days"],
+            days=days,
             force=options["force"],
         )
         summary = (

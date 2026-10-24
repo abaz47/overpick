@@ -97,10 +97,12 @@ def test_history_empty_ok(client):
 
 
 @pytest.mark.django_db
-def test_leagues_ok(client, sample_prediction):
-    response = client.get(reverse("leagues"))
+def test_upcoming_default_hours_window(client, sample_prediction):
+    response = client.get(reverse("upcoming"))
     assert response.status_code == 200
-    assert b"Premier League" in response.content
+    assert b"Next 48h" in response.content
+    assert b"Kickoff (MSK)" in response.content
+    assert b"Leagues" not in response.content
 
 
 @pytest.mark.django_db

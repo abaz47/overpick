@@ -12,5 +12,4 @@ urlpatterns = [
         name="match_detail",
     ),
     path("history/", views.history, name="history"),
-    path("leagues/", views.leagues, name="leagues"),
 ]

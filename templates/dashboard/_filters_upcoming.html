@@ -1,34 +1,36 @@
 <form method="get" class="row g-2 align-items-end mb-3">
   <div class="col-6 col-md-2">
-    <label class="form-label small mb-1" for="days">Период</label>
-    <select class="form-select form-select-sm" name="days" id="days">
-      <option value="today"
-              {% if days == "today" %}selected{% endif %}>Сегодня</option>
-      <option value="tomorrow"
-              {% if days == "tomorrow" %}selected{% endif %}>Завтра</option>
-      <option value="3" {% if days == "3" %}selected{% endif %}>3 дня</option>
-      <option value="7" {% if days == "7" %}selected{% endif %}>7 дней</option>
-      <option value="14"
-              {% if days == "14" %}selected{% endif %}>14 дней</option>
-      <option value="all"
-              {% if days == "all" %}selected{% endif %}>Все</option>
+    <label class="form-label small mb-1" for="hours">Window</label>
+    <select class="form-select form-select-sm" name="hours" id="hours">
+      <option value="3"
+              {% if hours == "3" %}selected{% endif %}>Next 3h</option>
+      <option value="6"
+              {% if hours == "6" %}selected{% endif %}>Next 6h</option>
+      <option value="9"
+              {% if hours == "9" %}selected{% endif %}>Next 9h</option>
+      <option value="12"
+              {% if hours == "12" %}selected{% endif %}>Next 12h</option>
+      <option value="24"
+              {% if hours == "24" %}selected{% endif %}>Next 24h</option>
+      <option value="48"
+              {% if hours == "48" %}selected{% endif %}>Next 48h</option>
     </select>
   </div>
   <div class="col-6 col-md-2">
-    <label class="form-label small mb-1" for="market">Сортировка</label>
+    <label class="form-label small mb-1" for="market">Signal market</label>
     <select class="form-select form-select-sm" name="market" id="market">
       <option value="o15"
-              {% if market == "o15" %}selected{% endif %}>О1.5</option>
+              {% if market == "o15" %}selected{% endif %}>O1.5</option>
       <option value="o25"
-              {% if market == "o25" %}selected{% endif %}>О2.5</option>
+              {% if market == "o25" %}selected{% endif %}>O2.5</option>
       <option value="o35"
-              {% if market == "o35" %}selected{% endif %}>О3.5</option>
+              {% if market == "o35" %}selected{% endif %}>O3.5</option>
     </select>
   </div>
   <div class="col-12 col-md-4">
-    <label class="form-label small mb-1" for="league">Лига</label>
+    <label class="form-label small mb-1" for="league">League</label>
     <select class="form-select form-select-sm" name="league" id="league">
-      <option value="">Все лиги</option>
+      <option value="">All leagues</option>
       {% for lg in leagues %}
         <option value="{{ lg.api_id }}"
                 {% if league_api_id == lg.api_id %}selected{% endif %}>
@@ -45,12 +47,10 @@
              value="1"
              id="signals"
              {% if signals_only %}checked{% endif %}>
-      <label class="form-check-label small"
-             for="signals">Только сигналы</label>
+      <label class="form-check-label small" for="signals">Signals only</label>
     </div>
   </div>
   <div class="col-6 col-md-2">
-    <button type="submit"
-            class="btn btn-sm btn-primary w-100">Применить</button>
+    <button type="submit" class="btn btn-sm btn-primary w-100">Apply</button>
   </div>
 </form>

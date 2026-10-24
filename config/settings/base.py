@@ -86,7 +86,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-LANGUAGE_CODE = "ru-ru"
+LANGUAGE_CODE = "en-us"
 
 TIME_ZONE = "Europe/Moscow"
 
@@ -129,6 +129,11 @@ MODEL_MIN_N = int(os.environ.get("MODEL_MIN_N", "3"))
 MODEL_SHRINK_K = float(os.environ.get("MODEL_SHRINK_K", "3"))
 MODEL_LAST_WEIGHT = float(
     os.environ.get("MODEL_LAST_WEIGHT", "0.6"),
+)
+
+# Default horizon for build_predictions / Upcoming UI.
+PREDICTION_HORIZON_DAYS = int(
+    os.environ.get("PREDICTION_HORIZON_DAYS", "3"),
 )
 
 SIGNAL_THRESHOLD_O15 = float(
