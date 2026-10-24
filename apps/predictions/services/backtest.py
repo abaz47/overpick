@@ -17,14 +17,21 @@ from apps.predictions.services.form import (
     lambdas_from_rates,
     shrink,
 )
-from apps.predictions.services.poisson import p_over
+from apps.predictions.services.poisson import p_btts, p_over
 
-Markets = ("o15", "o25", "o35")
+Markets = ("o15", "o25", "o35", "btts")
+
+_MARKET_ATTRS = {
+    "o15": ("p_over_15", "hit_15"),
+    "o25": ("p_over_25", "hit_25"),
+    "o35": ("p_over_35", "hit_35"),
+    "btts": ("p_btts", "hit_btts"),
+}
 
 
 @dataclass
 class BacktestRow:
-    """One scored forecast vs actual total."""
+    """One scored forecast vs actual total / BTTS."""
 
     fixture_id: int
     league_api_id: int
@@ -32,9 +39,12 @@ class BacktestRow:
     country: str
     league_name: str
     total_goals: int
+    goals_home: int
+    goals_away: int
     p_over_15: float
     p_over_25: float
     p_over_35: float
+    p_btts: float
     lambda_total: float
 
     @property
@@ -48,6 +58,10 @@ class BacktestRow:
     @property
     def hit_35(self) -> bool:
         return self.total_goals >= 4
+
+    @property
+    def hit_btts(self) -> bool:
+        return self.goals_home >= 1 and self.goals_away >= 1
 
 
 @dataclass
@@ -81,11 +95,17 @@ class BacktestReport:
     def base_rates(self) -> dict[str, float]:
         n = len(self.rows)
         if n == 0:
-            return {"o15": 0.0, "o25": 0.0, "o35": 0.0}
+            return {
+                "o15": 0.0,
+                "o25": 0.0,
+                "o35": 0.0,
+                "btts": 0.0,
+            }
         return {
             "o15": sum(r.hit_15 for r in self.rows) / n,
             "o25": sum(r.hit_25 for r in self.rows) / n,
             "o35": sum(r.hit_35 for r in self.rows) / n,
+            "btts": sum(r.hit_btts for r in self.rows) / n,
         }
 
     def reliability_bins(
@@ -94,12 +114,7 @@ class BacktestReport:
         step: float = 0.1,
     ) -> list[dict]:
         """Predicted-prob bins vs empirical frequency."""
-        attr = {
-            "o15": ("p_over_15", "hit_15"),
-            "o25": ("p_over_25", "hit_25"),
-            "o35": ("p_over_35", "hit_35"),
-        }[market]
-        p_attr, hit_attr = attr
+        p_attr, hit_attr = _MARKET_ATTRS[market]
         buckets: dict[int, list[tuple[float, bool]]] = defaultdict(
             list,
         )
@@ -132,11 +147,7 @@ class BacktestReport:
         market: str,
         thresholds: Iterable[float],
     ) -> list[ThresholdResult]:
-        p_attr, hit_attr = {
-            "o15": ("p_over_15", "hit_15"),
-            "o25": ("p_over_25", "hit_25"),
-            "o35": ("p_over_35", "hit_35"),
-        }[market]
+        p_attr, hit_attr = _MARKET_ATTRS[market]
         results = []
         for thr in thresholds:
             signals = 0
@@ -158,11 +169,7 @@ class BacktestReport:
 
     def by_season(self, market: str = "o25") -> list[dict]:
         """Base rate and mean P by season."""
-        p_attr, hit_attr = {
-            "o15": ("p_over_15", "hit_15"),
-            "o25": ("p_over_25", "hit_25"),
-            "o35": ("p_over_35", "hit_35"),
-        }[market]
+        p_attr, hit_attr = _MARKET_ATTRS[market]
         groups: dict[int, list[BacktestRow]] = defaultdict(list)
         for row in self.rows:
             groups[row.season].append(row)
@@ -357,9 +364,12 @@ def iter_backtest_rows(
                 country=league.country,
                 league_name=league.name,
                 total_goals=gh + ga,
+                goals_home=gh,
+                goals_away=ga,
                 p_over_15=p_over(lam_h, lam_a, 1.5),
                 p_over_25=p_over(lam_h, lam_a, 2.5),
                 p_over_35=p_over(lam_h, lam_a, 3.5),
+                p_btts=p_btts(lam_h, lam_a),
                 lambda_total=lam_h + lam_a,
             )
 
@@ -418,6 +428,7 @@ DEFAULT_THRESHOLDS = {
     "o15": [0.80, 0.82, 0.85, 0.88, 0.90, 0.92],
     "o25": [0.55, 0.58, 0.60, 0.65, 0.68, 0.70],
     "o35": [0.36, 0.40, 0.42, 0.45, 0.48, 0.50],
+    "btts": [0.55, 0.58, 0.60, 0.62, 0.65, 0.68, 0.70],
 }
 
 
@@ -440,13 +451,16 @@ def format_report(report: BacktestReport) -> str:
     lines.append(
         f"  O1.5={base['o15']:.1%}  "
         f"O2.5={base['o25']:.1%}  "
-        f"O3.5={base['o35']:.1%}",
+        f"O3.5={base['o35']:.1%}  "
+        f"BTTS={base['btts']:.1%}",
     )
     avg15 = sum(r.p_over_15 for r in report.rows) / n
     avg25 = sum(r.p_over_25 for r in report.rows) / n
     avg35 = sum(r.p_over_35 for r in report.rows) / n
+    avgb = sum(r.p_btts for r in report.rows) / n
     lines.append(
-        f"Mean P: O1.5={avg15:.1%}  O2.5={avg25:.1%}  O3.5={avg35:.1%}",
+        f"Mean P: O1.5={avg15:.1%}  O2.5={avg25:.1%}  "
+        f"O3.5={avg35:.1%}  BTTS={avgb:.1%}",
     )
 
     lines.append("")
@@ -462,6 +476,7 @@ def format_report(report: BacktestReport) -> str:
         ("o15", "O1.5"),
         ("o25", "O2.5"),
         ("o35", "O3.5"),
+        ("btts", "BTTS"),
     ):
         lines.append("")
         lines.append(f"Reliability bins {label}:")

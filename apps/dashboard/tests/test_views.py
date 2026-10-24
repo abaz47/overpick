@@ -19,13 +19,20 @@ from apps.predictions.services.batch import (
 )
 
 
-def _signals(*, o25: bool = True) -> dict:
+def _signals(*, o25: bool = True, btts: bool = False) -> dict:
+    primary = None
+    if o25:
+        primary = "o25"
+    elif btts:
+        primary = "btts"
     return {
         "o15": False,
         "o25": o25,
         "o35": False,
-        "primary": "o25" if o25 else None,
-        "primary_edge": 0.07 if o25 else None,
+        "btts": btts,
+        "primary": primary,
+        "primary_edge": 0.07 if primary else None,
+        "p_btts": 0.68 if btts else 0.50,
     }
 
 
@@ -65,6 +72,7 @@ def sample_prediction(db):
         p_over_15=0.9,
         p_over_25=0.72,
         p_over_35=0.4,
+        p_btts=0.55,
         features_json={"signals": _signals(o25=True)},
     )
 
@@ -131,6 +139,7 @@ def test_tomorrows_picks_ok(client, db):
         p_over_15=0.9,
         p_over_25=0.7,
         p_over_35=0.4,
+        p_btts=0.55,
         features_json={"signals": _signals(o25=True)},
     )
     response = client.get(reverse("picks_tomorrow"))
@@ -138,7 +147,7 @@ def test_tomorrows_picks_ok(client, db):
     assert b"Tomorrow" in response.content
     assert b"HomeT" in response.content
     assert b"Pending" in response.content
-    assert b"Over 2.5" in response.content
+    assert b"O2.5" in response.content
 
 
 @pytest.mark.django_db
@@ -179,7 +188,69 @@ def test_live_match_excluded_from_kpi(db):
         Prediction.objects.select_related("fixture"),
     )
     assert kpi["o25"]["picked"] == 0
+    assert kpi["btts"]["picked"] == 0
     assert kpi["count"] == 0
+
+
+@pytest.mark.django_db
+def test_btts_only_appears_once_with_dual_columns(client, db):
+    """One row when both tips fire; separate KPI markets."""
+    from apps.dashboard.views import _pick_accuracy_kpi
+
+    league = League.objects.create(
+        api_id=39,
+        name="PL",
+        country="England",
+        season=2026,
+        is_active=True,
+    )
+    home = Team.objects.create(api_id=20, name="DualH")
+    away = Team.objects.create(api_id=21, name="DualA")
+    start, end = current_batch_window()
+    list_start = today_picks_start(start, end)
+    kick = list_start + timedelta(hours=2)
+    if kick <= timezone.now():
+        kick = timezone.now() + timedelta(hours=1)
+    fx = Fixture.objects.create(
+        api_id=8001,
+        league=league,
+        season=2026,
+        home=home,
+        away=away,
+        kickoff_at=kick,
+        status=Fixture.Status.NS,
+    )
+    Prediction.objects.create(
+        fixture=fx,
+        lambda_home=1.6,
+        lambda_away=1.4,
+        lambda_total=3.0,
+        p_over_15=0.92,
+        p_over_25=0.72,
+        p_over_35=0.45,
+        p_btts=0.70,
+        features_json={
+            "signals": _signals(o25=True, btts=True),
+        },
+    )
+    response = client.get(reverse("picks"))
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert body.count("DualH") == 1
+    assert "BTTS" in body
+
+    fx.status = Fixture.Status.FT
+    fx.goals_home = 2
+    fx.goals_away = 1
+    fx.save()
+    kpi = _pick_accuracy_kpi(
+        Prediction.objects.select_related("fixture"),
+    )
+    assert kpi["o25"]["picked"] == 1
+    assert kpi["o25"]["wins"] == 1
+    assert kpi["btts"]["picked"] == 1
+    assert kpi["btts"]["wins"] == 1
+    assert kpi["count"] == 2
 
 
 @pytest.mark.django_db
@@ -237,6 +308,7 @@ def test_history_pick_accuracy(client, db):
         p_over_15=0.9,
         p_over_25=0.7,
         p_over_35=0.4,
+        p_btts=0.55,
         features_json={"signals": _signals(o25=True)},
     )
     kpi = _pick_accuracy_kpi(
@@ -244,6 +316,7 @@ def test_history_pick_accuracy(client, db):
     )
     assert kpi["o25"]["picked"] == 1
     assert kpi["o25"]["wins"] == 1
+    assert kpi["btts"]["picked"] == 0
     assert kpi["count"] == 1
 
     response = client.get(reverse("history") + "?days=30")

@@ -148,6 +148,9 @@ def write_league_calibration(
             "o15": float(settings.SIGNAL_THRESHOLD_O15),
             "o25": float(settings.SIGNAL_THRESHOLD_O25),
             "o35": float(settings.SIGNAL_THRESHOLD_O35),
+            "btts": float(
+                getattr(settings, "SIGNAL_THRESHOLD_BTTS", 0.62),
+            ),
         }
     data = calibrate_leagues(global_thr=global_thr)
     path = save_league_thresholds(data)

@@ -106,7 +106,10 @@ def test_predict_fixture_creates_locked_row() -> None:
     )
     assert 0 < pred.p_over_15 <= 1
     assert pred.p_over_15 >= pred.p_over_25 >= pred.p_over_35
+    assert pred.p_btts is not None
+    assert 0 < pred.p_btts <= 1
     assert "signals" in pred.features_json
+    assert "btts" in pred.features_json["signals"]
 
 
 @pytest.mark.django_db

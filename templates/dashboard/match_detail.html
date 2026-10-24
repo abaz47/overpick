@@ -21,25 +21,38 @@
   {% if not prediction %}
     <div class="alert alert-warning">Prediction not built yet.</div>
   {% else %}
-    {% if signals.primary == "o25" %}
+    {% if signals.o25 or signals.btts %}
       <div class="alert alert-light border mb-3 py-2">
         Recommendation:
-        <strong>Pick Over 2.5</strong>
-        ({{ prediction.p_over_25|pct }})
-        {% if fixture.is_finished %}
-          <span class="badge text-bg-{{ prediction.is_hit_over_25|hit_badge }} ms-1">
-            {{ prediction.is_hit_over_25|hit_label }}
-          </span>
+        {% if signals.o25 %}
+          <strong>Pick Over 2.5</strong>
+          ({{ prediction.p_over_25|pct }})
+          {% if fixture.is_finished %}
+            <span class="badge text-bg-{{ prediction.is_hit_over_25|hit_badge }} ms-1">
+              {{ prediction.is_hit_over_25|hit_label }}
+            </span>
+          {% endif %}
+        {% endif %}
+        {% if signals.o25 and signals.btts %}·{% endif %}
+        {% if signals.btts %}
+          <strong>Pick BTTS</strong>
+          ({% if prediction.p_btts is not None %}{{ prediction.p_btts|pct }}{% else %}{{ signals.p_btts|pct }}{% endif %})
+          {% if fixture.is_finished %}
+            <span class="badge text-bg-{{ prediction.is_hit_btts|hit_badge }} ms-1">
+              {{ prediction.is_hit_btts|hit_label }}
+            </span>
+          {% endif %}
         {% endif %}
       </div>
     {% else %}
       <div class="alert alert-secondary mb-3 py-2">
-        No Over 2.5 tip for this match
-        (model P={{ prediction.p_over_25|pct }}, below threshold).
+        No tip for this match
+        (O2.5={{ prediction.p_over_25|pct }},
+        BTTS={% if prediction.p_btts is not None %}{{ prediction.p_btts|pct }}{% else %}—{% endif %}).
       </div>
     {% endif %}
     <div class="row g-3 mb-2">
-      <div class="col-md-4">
+      <div class="col-md-3">
         <div class="card shadow-sm h-100">
           <div class="card-body">
             <div class="text-muted small">Expected goals</div>
@@ -53,19 +66,39 @@
           </div>
         </div>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <div class="card shadow-sm h-100
-                    {% if signals.primary == 'o25' %}border-success{% endif %}">
+                    {% if signals.o25 %}border-success{% endif %}">
           <div class="card-body">
             <div class="text-muted small">Over 2.5</div>
             <div class="fs-4">{{ prediction.p_over_25|pct }}</div>
-            {% if signals.primary == "o25" %}
+            {% if signals.o25 %}
               <span class="badge text-bg-success">Pick</span>
             {% endif %}
           </div>
         </div>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
+        <div class="card shadow-sm h-100
+                    {% if signals.btts %}border-success{% endif %}">
+          <div class="card-body">
+            <div class="text-muted small">BTTS</div>
+            <div class="fs-4">
+              {% if prediction.p_btts is not None %}
+                {{ prediction.p_btts|pct }}
+              {% elif signals.p_btts is not None %}
+                {{ signals.p_btts|pct }}
+              {% else %}
+                —
+              {% endif %}
+            </div>
+            {% if signals.btts %}
+              <span class="badge text-bg-success">Pick</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
         <div class="card shadow-sm h-100">
           <div class="card-body">
             <div class="text-muted small">Context</div>
@@ -73,7 +106,9 @@
               Over 1.5 {{ prediction.p_over_15|pct }}
               · Over 3.5 {{ prediction.p_over_35|pct }}
             </div>
-            <div class="small text-muted mt-2">Shown for context only — tips are O2.5.</div>
+            <div class="small text-muted mt-2">
+              Shown for context — tips are O2.5 / BTTS.
+            </div>
           </div>
         </div>
       </div>

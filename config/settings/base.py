@@ -161,6 +161,9 @@ SIGNAL_THRESHOLD_O25 = float(
 SIGNAL_THRESHOLD_O35 = float(
     os.environ.get("SIGNAL_THRESHOLD_O35", "0.55"),
 )
+SIGNAL_THRESHOLD_BTTS = float(
+    os.environ.get("SIGNAL_THRESHOLD_BTTS", "0.62"),
+)
 # Do not tip O3.5 above this (overconfidence guard).
 SIGNAL_O35_MAX_PROB = float(
     os.environ.get("SIGNAL_O35_MAX_PROB", "0.70"),

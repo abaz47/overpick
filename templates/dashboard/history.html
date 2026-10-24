@@ -7,7 +7,7 @@
   <div class="d-flex justify-content-between align-items-center mb-2">
     <h1 class="h3 mb-0">History</h1>
     <span class="text-muted small">
-      Over 2.5 since {{ stats_since|date:"d.m.Y H:i" }} MSK
+      Since {{ stats_since|date:"d.m.Y H:i" }} MSK
     </span>
   </div>
   <form method="get" class="row g-2 align-items-end mb-3">
@@ -41,18 +41,39 @@
       <button type="submit" class="btn btn-sm btn-primary w-100">Apply</button>
     </div>
   </form>
-  <div class="card shadow-sm mb-4">
-    <div class="card-body py-3">
-      <div class="text-muted small">Pick Over 2.5</div>
-      <div class="fs-4">
-        {% if kpi.o25.rate is not None %}
-          {{ kpi.o25.rate|pct }}
-        {% else %}
-          —
-        {% endif %}
+  <div class="row g-3 mb-4">
+    <div class="col-md-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-body py-3">
+          <div class="text-muted small">Pick Over 2.5</div>
+          <div class="fs-4">
+            {% if kpi.o25.rate is not None %}
+              {{ kpi.o25.rate|pct }}
+            {% else %}
+              —
+            {% endif %}
+          </div>
+          <div class="small text-muted">
+            {{ kpi.o25.wins }} won / {{ kpi.o25.picked }} picked
+          </div>
+        </div>
       </div>
-      <div class="small text-muted">
-        {{ kpi.o25.wins }} won / {{ kpi.o25.picked }} picked
+    </div>
+    <div class="col-md-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-body py-3">
+          <div class="text-muted small">Pick BTTS</div>
+          <div class="fs-4">
+            {% if kpi.btts.rate is not None %}
+              {{ kpi.btts.rate|pct }}
+            {% else %}
+              —
+            {% endif %}
+          </div>
+          <div class="small text-muted">
+            {{ kpi.btts.wins }} won / {{ kpi.btts.picked }} picked
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -60,10 +81,8 @@
     <div class="d-flex justify-content-between align-items-baseline mb-2 mt-4">
       <h2 class="h5 mb-0">{{ day.date|date:"d.m.Y" }}</h2>
       <span class="small text-muted">
-        {{ day.kpi.o25.wins }} won / {{ day.kpi.o25.picked }} picked
-        {% if day.kpi.o25.rate is not None %}
-          ({{ day.kpi.o25.rate|pct }})
-        {% endif %}
+        O2.5 {{ day.kpi.o25.wins }}/{{ day.kpi.o25.picked }}
+        · BTTS {{ day.kpi.btts.wins }}/{{ day.kpi.btts.picked }}
       </span>
     </div>
     <div class="table-responsive mb-3">
@@ -73,14 +92,14 @@
             <th>Time</th>
             <th>Match</th>
             <th class="text-end">Score</th>
-            <th>Pick</th>
-            <th class="text-end">P(O2.5)</th>
+            <th class="text-end">O2.5</th>
+            <th class="text-end">BTTS</th>
             <th class="text-center">Result</th>
           </tr>
         </thead>
         <tbody>
           {% for pred in day.picks %}
-            {% with f=pred.fixture %}
+            {% with f=pred.fixture sig=pred.features_json.signals %}
               <tr>
                 <td class="small text-nowrap">{{ f.kickoff_at|date:"H:i" }}</td>
                 <td>
@@ -94,12 +113,35 @@
                   {{ f.goals_home }}:{{ f.goals_away }}
                   <span class="text-muted">({{ f.total_goals }})</span>
                 </td>
-                <td>Over 2.5</td>
-                <td class="text-end">{{ pred.p_over_25|pct }}</td>
+                <td class="text-end">
+                  {% if sig.o25 %}
+                    {{ pred.p_over_25|pct }}
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  {% if sig.btts %}
+                    {% if pred.p_btts is not None %}
+                      {{ pred.p_btts|pct }}
+                    {% else %}
+                      {{ sig.p_btts|pct }}
+                    {% endif %}
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
                 <td class="text-center">
-                  <span class="badge text-bg-{{ pred.is_hit_over_25|hit_badge }}">
-                    {{ pred.is_hit_over_25|hit_label }}
-                  </span>
+                  {% if sig.o25 %}
+                    <span class="badge text-bg-{{ pred.is_hit_over_25|hit_badge }}">
+                      O2.5 {{ pred.is_hit_over_25|hit_label }}
+                    </span>
+                  {% endif %}
+                  {% if sig.btts %}
+                    <span class="badge text-bg-{{ pred.is_hit_btts|hit_badge }}">
+                      BTTS {{ pred.is_hit_btts|hit_label }}
+                    </span>
+                  {% endif %}
                 </td>
               </tr>
             {% endwith %}
@@ -109,7 +151,7 @@
     </div>
   {% empty %}
     <div class="text-center text-muted py-4">
-      No finished Over 2.5 picks in this period yet.
+      No finished O2.5 / BTTS picks in this period yet.
       Live tracking starts {{ stats_since|date:"d.m.Y H:i" }} MSK.
     </div>
   {% endfor %}

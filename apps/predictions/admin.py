@@ -16,6 +16,7 @@ class PredictionAdmin(admin.ModelAdmin):
         "p_over_15",
         "p_over_25",
         "p_over_35",
+        "p_btts",
         "is_locked",
         "created_at",
     )

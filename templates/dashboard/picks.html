@@ -7,11 +7,11 @@
   <div class="d-flex justify-content-between align-items-center mb-2">
     <h1 class="h3 mb-0">{{ page_title }}</h1>
     <span class="text-muted small">
-      Batch {{ batch_label }} MSK · {{ picks|length }} Over 2.5 tips
+      Batch {{ batch_label }} MSK · {{ picks|length }} matches
     </span>
   </div>
   <p class="small text-muted mb-3">
-    Over 2.5 tips for
+    O2.5 / BTTS tips for
     {{ batch_start|date:"d.m H:i" }} → {{ batch_end|date:"d.m H:i" }} MSK.
     Tips stay fixed; results appear only after full time.
     {% if which == "today" %}
@@ -36,19 +36,41 @@
       <button type="submit" class="btn btn-sm btn-primary w-100">Apply</button>
     </div>
   </form>
-  <div class="card shadow-sm mb-4">
-    <div class="card-body py-3">
-      <div class="text-muted small">Finished Over 2.5</div>
-      <div class="fs-4">
-        {% if kpi.o25.picked %}
-          {{ kpi.o25.wins }} won / {{ kpi.o25.picked }} picked
-          {% if kpi.o25.rate is not None %}
-            <span class="text-muted small">({{ kpi.o25.rate|pct }})</span>
-          {% endif %}
-        {% else %}
-          —
-          <span class="text-muted small">no finished tips yet</span>
-        {% endif %}
+  <div class="row g-3 mb-4">
+    <div class="col-md-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-body py-3">
+          <div class="text-muted small">Finished Over 2.5</div>
+          <div class="fs-4">
+            {% if kpi.o25.picked %}
+              {{ kpi.o25.wins }} won / {{ kpi.o25.picked }} picked
+              {% if kpi.o25.rate is not None %}
+                <span class="text-muted small">({{ kpi.o25.rate|pct }})</span>
+              {% endif %}
+            {% else %}
+              —
+              <span class="text-muted small">no finished tips yet</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-body py-3">
+          <div class="text-muted small">Finished BTTS</div>
+          <div class="fs-4">
+            {% if kpi.btts.picked %}
+              {{ kpi.btts.wins }} won / {{ kpi.btts.picked }} picked
+              {% if kpi.btts.rate is not None %}
+                <span class="text-muted small">({{ kpi.btts.rate|pct }})</span>
+              {% endif %}
+            {% else %}
+              —
+              <span class="text-muted small">no finished tips yet</span>
+            {% endif %}
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -58,15 +80,15 @@
         <tr>
           <th>Kickoff (MSK)</th>
           <th>Match</th>
-          <th>Pick</th>
-          <th class="text-end">P(O2.5)</th>
+          <th class="text-end">O2.5</th>
+          <th class="text-end">BTTS</th>
           <th class="text-end">Score</th>
           <th class="text-center">Result</th>
         </tr>
       </thead>
       <tbody>
         {% for pred in picks %}
-          {% with f=pred.fixture %}
+          {% with f=pred.fixture sig=pred.features_json.signals %}
             <tr>
               <td class="text-nowrap small">{{ f.kickoff_at|date:"d.m H:i" }}</td>
               <td>
@@ -78,10 +100,28 @@
                   {{ f.league.country }} · {{ f.league.name }}
                 </div>
               </td>
-              <td>
-                <span class="badge text-bg-success">Pick O2.5</span>
+              <td class="text-end">
+                {% if sig.o25 %}
+                  <span class="badge text-bg-success">Pick</span>
+                  <div>{{ pred.p_over_25|pct }}</div>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
               </td>
-              <td class="text-end">{{ pred.p_over_25|pct }}</td>
+              <td class="text-end">
+                {% if sig.btts %}
+                  <span class="badge text-bg-success">Pick</span>
+                  <div>
+                    {% if pred.p_btts is not None %}
+                      {{ pred.p_btts|pct }}
+                    {% else %}
+                      {{ sig.p_btts|pct }}
+                    {% endif %}
+                  </div>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
               <td class="text-end text-nowrap">
                 {% if f.is_finished %}
                   {{ f.goals_home }}:{{ f.goals_away }}
@@ -92,9 +132,16 @@
               </td>
               <td class="text-center">
                 {% if f.is_finished %}
-                  <span class="badge text-bg-{{ pred.is_hit_over_25|hit_badge }}">
-                    {{ pred.is_hit_over_25|hit_label }}
-                  </span>
+                  {% if sig.o25 %}
+                    <span class="badge text-bg-{{ pred.is_hit_over_25|hit_badge }}">
+                      O2.5 {{ pred.is_hit_over_25|hit_label }}
+                    </span>
+                  {% endif %}
+                  {% if sig.btts %}
+                    <span class="badge text-bg-{{ pred.is_hit_btts|hit_badge }}">
+                      BTTS {{ pred.is_hit_btts|hit_label }}
+                    </span>
+                  {% endif %}
                 {% else %}
                   <span class="badge text-bg-secondary">Pending</span>
                 {% endif %}
@@ -105,9 +152,9 @@
           <tr>
             <td colspan="6" class="text-center text-muted py-4">
               {% if which == "tomorrow" %}
-                No Over 2.5 picks for tomorrow's batch yet.
+                No O2.5 / BTTS picks for tomorrow's batch yet.
               {% else %}
-                No Over 2.5 picks in today's batch. Next lock at 07:30 MSK.
+                No O2.5 / BTTS picks in today's batch. Next lock at 07:30 MSK.
               {% endif %}
             </td>
           </tr>

@@ -8,7 +8,7 @@ from pathlib import Path
 
 from django.conf import settings
 
-MARKETS = ("o15", "o25", "o35")
+MARKETS = ("o15", "o25", "o35", "btts")
 
 _DATA_PATH = (
     Path(__file__).resolve().parent.parent / "data" / "league_thresholds.json"
@@ -16,11 +16,14 @@ _DATA_PATH = (
 
 
 def default_thresholds() -> dict[str, float]:
-    """Global Pick thresholds (former Strong levels)."""
+    """Global Pick thresholds."""
     return {
         "o15": float(settings.SIGNAL_THRESHOLD_O15),
         "o25": float(settings.SIGNAL_THRESHOLD_O25),
         "o35": float(settings.SIGNAL_THRESHOLD_O35),
+        "btts": float(
+            getattr(settings, "SIGNAL_THRESHOLD_BTTS", 0.62),
+        ),
     }
 
 

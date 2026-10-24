@@ -16,7 +16,7 @@ from apps.predictions.services.form import (
     build_form_features,
     expected_goals,
 )
-from apps.predictions.services.poisson import p_over
+from apps.predictions.services.poisson import p_btts, p_over
 
 
 def _league() -> League:
@@ -102,7 +102,9 @@ def test_backtest_matches_orm_form() -> None:
     feats = build_form_features(target)
     lam_h, lam_a = expected_goals(feats)
     assert abs(row.p_over_25 - p_over(lam_h, lam_a, 2.5)) < 1e-9
+    assert abs(row.p_btts - p_btts(lam_h, lam_a)) < 1e-9
     assert row.hit_25 is True
+    assert row.hit_btts is True
 
 
 @pytest.mark.django_db

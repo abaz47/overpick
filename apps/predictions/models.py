@@ -31,6 +31,11 @@ class Prediction(models.Model):
     p_over_35 = models.FloatField(
         help_text="P(total goals >= 4)",
     )
+    p_btts = models.FloatField(
+        null=True,
+        blank=True,
+        help_text="P(both teams score)",
+    )
     features_json = models.JSONField(
         default=dict,
         blank=True,
@@ -73,3 +78,11 @@ class Prediction(models.Model):
         if total is None:
             return None
         return total >= 4
+
+    @property
+    def is_hit_btts(self) -> bool | None:
+        """Whether both teams scored (needs FT score)."""
+        fx = self.fixture
+        if fx.goals_home is None or fx.goals_away is None:
+            return None
+        return fx.goals_home >= 1 and fx.goals_away >= 1

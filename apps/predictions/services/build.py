@@ -20,7 +20,7 @@ from apps.predictions.services.form import (
     build_form_features,
     expected_goals,
 )
-from apps.predictions.services.poisson import p_over
+from apps.predictions.services.poisson import p_btts, p_over
 from apps.predictions.services.signals import (
     build_signal_flags,
 )
@@ -96,11 +96,13 @@ def predict_fixture(fixture: Fixture) -> Prediction:
     p15 = p_over(lam_h, lam_a, 1.5)
     p25 = p_over(lam_h, lam_a, 2.5)
     p35 = p_over(lam_h, lam_a, 3.5)
+    pb = p_btts(lam_h, lam_a)
     feats = features.to_json()
     feats["signals"] = build_signal_flags(
         p15,
         p25,
         p35,
+        p_btts=pb,
         league_api_id=fixture.league.api_id,
     )
     b_start, b_end = batch_containing(fixture.kickoff_at)
@@ -115,6 +117,7 @@ def predict_fixture(fixture: Fixture) -> Prediction:
         p_over_15=p15,
         p_over_25=p25,
         p_over_35=p35,
+        p_btts=pb,
         features_json=feats,
         is_locked=True,
     )

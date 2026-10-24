@@ -121,3 +121,24 @@ def p_over(
         rho=rho,
     )
     return sum(probs[min_goals:])
+
+
+def p_btts(
+    lambda_home: float,
+    lambda_away: float,
+    max_goals: int = 12,
+    *,
+    rho: float | None = None,
+) -> float:
+    """P(both teams score) = P(G_H>=1 and G_A>=1)."""
+    matrix = score_matrix(
+        lambda_home,
+        lambda_away,
+        max_goals=max_goals,
+        rho=rho,
+    )
+    # 1 - P(home 0) - P(away 0) + P(0-0)
+    p_home0 = sum(matrix[0][j] for j in range(max_goals + 1))
+    p_away0 = sum(matrix[i][0] for i in range(max_goals + 1))
+    p_00 = matrix[0][0]
+    return max(0.0, min(1.0, 1.0 - p_home0 - p_away0 + p_00))

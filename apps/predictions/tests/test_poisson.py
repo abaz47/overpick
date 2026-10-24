@@ -1,6 +1,7 @@
 """Tests for Poisson / Dixon–Coles totals helpers."""
 
 from apps.predictions.services.poisson import (
+    p_btts,
     p_over,
     poisson_pmf,
     score_matrix,
@@ -37,3 +38,11 @@ def test_dixon_coles_changes_low_scores() -> None:
     # Negative ρ increases P(0-0) in the standard τ formula.
     assert dc[0][0] > indep[0][0]
     assert abs(sum(sum(row) for row in dc) - 1.0) < 1e-9
+
+
+def test_p_btts_bounds_and_increases() -> None:
+    low = p_btts(0.8, 0.7)
+    high = p_btts(1.8, 1.6)
+    assert 0.0 <= low <= 1.0
+    assert high > low
+    assert p_btts(3.0, 3.0) > 0.75

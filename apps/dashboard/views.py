@@ -6,7 +6,7 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 from typing import Any
 
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
@@ -33,11 +33,10 @@ FINISHED = (
 # 1 = Yesterday; no "today" (live day lives on Picks).
 HISTORY_DAYS = ("1", "2", "3", "7", "30")
 DEFAULT_HISTORY_DAYS = "7"
-# Product focuses on Over 2.5 picks only.
 OVER_LINES = {
     "o25": 3,
 }
-PRIMARY_KEYS = ("o25",)
+PRIMARY_KEYS = ("o25", "btts")
 
 
 def _parse_int(raw: str | None) -> int | None:
@@ -109,8 +108,11 @@ def _apply_league_filter(
 
 
 def _primary_picks(qs: QuerySet) -> QuerySet:
+    """Matches with at least one product tip (O2.5 and/or BTTS)."""
     return qs.filter(
-        features_json__signals__primary__in=PRIMARY_KEYS,
+        Q(features_json__signals__o25=True)
+        | Q(features_json__signals__btts=True)
+        | Q(features_json__signals__primary__in=PRIMARY_KEYS),
     )
 
 
@@ -286,12 +288,16 @@ def _pick_accuracy_kpi(
     return _pick_accuracy_kpi_list(list(qs))
 
 
+def _market_stat() -> dict[str, Any]:
+    return {"wins": 0, "picked": 0, "rate": None}
+
+
 def _pick_accuracy_kpi_list(
     preds: list[Prediction],
 ) -> dict:
-    """won/picked for finished Over 2.5 picks only."""
-    wins = 0
-    picked = 0
+    """Separate won/picked for finished O2.5 and BTTS tips."""
+    o25 = _market_stat()
+    btts = _market_stat()
     for pred in preds:
         fx = pred.fixture
         if not fx.is_finished:
@@ -299,19 +305,21 @@ def _pick_accuracy_kpi_list(
         if fx.goals_home is None or fx.goals_away is None:
             continue
         signals = (pred.features_json or {}).get("signals") or {}
-        if signals.get("primary") != "o25" and not signals.get(
-            "o25",
-        ):
-            continue
-        picked += 1
-        total = int(fx.goals_home) + int(fx.goals_away)
-        if total >= OVER_LINES["o25"]:
-            wins += 1
+        gh = int(fx.goals_home)
+        ga = int(fx.goals_away)
+        if signals.get("o25"):
+            o25["picked"] += 1
+            if gh + ga >= OVER_LINES["o25"]:
+                o25["wins"] += 1
+        if signals.get("btts"):
+            btts["picked"] += 1
+            if gh >= 1 and ga >= 1:
+                btts["wins"] += 1
+    for block in (o25, btts):
+        if block["picked"]:
+            block["rate"] = block["wins"] / block["picked"]
     return {
-        "o25": {
-            "wins": wins,
-            "picked": picked,
-            "rate": (wins / picked) if picked else None,
-        },
-        "count": picked,
+        "o25": o25,
+        "btts": btts,
+        "count": o25["picked"] + btts["picked"],
     }
