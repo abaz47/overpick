@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="ru">
   <head>
@@ -12,16 +13,37 @@
           rel="stylesheet"
           integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
           crossorigin="anonymous">
+    <style>
+      .prob-hot { font-weight: 600; color: #0a58ca; }
+      .table td, .table th { vertical-align: middle; }
+    </style>
   </head>
   <body class="bg-light">
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
       <div class="container">
         <a class="navbar-brand fw-semibold"
-           href="{% url 'home' %}">OverPick</a>
-        <div class="navbar-nav">
-          <a class="nav-link active" href="{% url 'home' %}">Upcoming</a>
-          <span class="nav-link disabled">History</span>
-          <span class="nav-link disabled">Leagues</span>
+           href="{% url 'upcoming' %}">OverPick</a>
+        <button class="navbar-toggler"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#navMain"
+                aria-controls="navMain"
+                aria-expanded="false"
+                aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navMain">
+          <div class="navbar-nav">
+            <a class="nav-link
+                      {% if request.resolver_match.url_name == 'upcoming' %}active{% endif %}"
+               href="{% url 'upcoming' %}">Upcoming</a>
+            <a class="nav-link
+                      {% if request.resolver_match.url_name == 'history' %}active{% endif %}"
+               href="{% url 'history' %}">History</a>
+            <a class="nav-link
+                      {% if request.resolver_match.url_name == 'leagues' %}active{% endif %}"
+               href="{% url 'leagues' %}">Leagues</a>
+          </div>
         </div>
       </div>
     </nav>

@@ -1,0 +1,56 @@
+<form method="get" class="row g-2 align-items-end mb-3">
+  <div class="col-6 col-md-2">
+    <label class="form-label small mb-1" for="days">Период</label>
+    <select class="form-select form-select-sm" name="days" id="days">
+      <option value="today"
+              {% if days == "today" %}selected{% endif %}>Сегодня</option>
+      <option value="tomorrow"
+              {% if days == "tomorrow" %}selected{% endif %}>Завтра</option>
+      <option value="3" {% if days == "3" %}selected{% endif %}>3 дня</option>
+      <option value="7" {% if days == "7" %}selected{% endif %}>7 дней</option>
+      <option value="14"
+              {% if days == "14" %}selected{% endif %}>14 дней</option>
+      <option value="all"
+              {% if days == "all" %}selected{% endif %}>Все</option>
+    </select>
+  </div>
+  <div class="col-6 col-md-2">
+    <label class="form-label small mb-1" for="market">Сортировка</label>
+    <select class="form-select form-select-sm" name="market" id="market">
+      <option value="o15"
+              {% if market == "o15" %}selected{% endif %}>О1.5</option>
+      <option value="o25"
+              {% if market == "o25" %}selected{% endif %}>О2.5</option>
+      <option value="o35"
+              {% if market == "o35" %}selected{% endif %}>О3.5</option>
+    </select>
+  </div>
+  <div class="col-12 col-md-4">
+    <label class="form-label small mb-1" for="league">Лига</label>
+    <select class="form-select form-select-sm" name="league" id="league">
+      <option value="">Все лиги</option>
+      {% for lg in leagues %}
+        <option value="{{ lg.api_id }}"
+                {% if league_api_id == lg.api_id %}selected{% endif %}>
+          {{ lg.country }} — {{ lg.name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-6 col-md-2">
+    <div class="form-check mt-4">
+      <input class="form-check-input"
+             type="checkbox"
+             name="signals"
+             value="1"
+             id="signals"
+             {% if signals_only %}checked{% endif %}>
+      <label class="form-check-label small"
+             for="signals">Только сигналы</label>
+    </div>
+  </div>
+  <div class="col-6 col-md-2">
+    <button type="submit"
+            class="btn btn-sm btn-primary w-100">Применить</button>
+  </div>
+</form>

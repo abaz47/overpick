@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "apps.leagues",
     "apps.matches",
     "apps.predictions",
+    "apps.dashboard",
 ]
 
 MIDDLEWARE = [

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}
+  OverPick — Leagues
+{% endblock title %}
+{% block content %}
+  <h1 class="h3 mb-3">Leagues</h1>
+  <div class="table-responsive">
+    <table class="table table-sm table-hover bg-white shadow-sm">
+      <thead class="table-light">
+        <tr>
+          <th>Страна</th>
+          <th>Лига</th>
+          <th>Сезон</th>
+          <th class="text-end">Матчи</th>
+          <th class="text-end">Upcoming</th>
+          <th class="text-end">Прогнозы</th>
+          <th>Sync</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lg in leagues %}
+          <tr>
+            <td>{{ lg.country }}</td>
+            <td>
+              {{ lg.name }}
+              <span class="text-muted small">#{{ lg.api_id }}</span>
+            </td>
+            <td>{{ lg.season }}</td>
+            <td class="text-end">{{ lg.fixtures_n }}</td>
+            <td class="text-end">{{ lg.upcoming_n }}</td>
+            <td class="text-end">{{ lg.preds_n }}</td>
+            <td class="small text-muted">
+              {% if lg.last_synced_at %}
+                {{ lg.last_synced_at|date:"d.m H:i" }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="7"
+                class="text-center text-muted py-4">Нет активных лиг.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock content %}
