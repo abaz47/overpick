@@ -26,6 +26,9 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "apps.core",
+    "apps.leagues",
+    "apps.matches",
+    "apps.predictions",
 ]
 
 MIDDLEWARE = [
