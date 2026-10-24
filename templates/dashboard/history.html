@@ -109,10 +109,7 @@
                   </a>
                   <div class="small text-muted">{{ f.league.name }}</div>
                 </td>
-                <td class="text-end text-nowrap">
-                  {{ f.goals_home }}:{{ f.goals_away }}
-                  <span class="text-muted">({{ f.total_goals }})</span>
-                </td>
+                <td class="text-end text-nowrap">{{ f.goals_home }}:{{ f.goals_away }}</td>
                 <td class="text-end">
                   {% if sig.o25 %}
                     {{ pred.p_over_25|pct }}
