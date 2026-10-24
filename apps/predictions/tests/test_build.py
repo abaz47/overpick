@@ -109,7 +109,7 @@ def test_predict_fixture_creates_locked_row() -> None:
     assert pred.p_btts is not None
     assert 0 < pred.p_btts <= 1
     assert "signals" in pred.features_json
-    assert "btts" in pred.features_json["signals"]
+    assert pred.features_json["signals"]["btts"] is False
 
 
 @pytest.mark.django_db

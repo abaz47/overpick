@@ -19,20 +19,14 @@ from apps.predictions.services.batch import (
 )
 
 
-def _signals(*, o25: bool = True, btts: bool = False) -> dict:
-    primary = None
-    if o25:
-        primary = "o25"
-    elif btts:
-        primary = "btts"
+def _signals(*, o25: bool = True) -> dict:
     return {
         "o15": False,
         "o25": o25,
         "o35": False,
-        "btts": btts,
-        "primary": primary,
-        "primary_edge": 0.07 if primary else None,
-        "p_btts": 0.68 if btts else 0.50,
+        "btts": False,
+        "primary": "o25" if o25 else None,
+        "primary_edge": 0.07 if o25 else None,
     }
 
 
@@ -191,15 +185,12 @@ def test_live_match_excluded_from_kpi(db):
         Prediction.objects.select_related("fixture"),
     )
     assert kpi["o25"]["picked"] == 0
-    assert kpi["btts"]["picked"] == 0
     assert kpi["count"] == 0
 
 
 @pytest.mark.django_db
-def test_btts_only_appears_once_with_dual_columns(client, db):
-    """One row when both tips fire; separate KPI markets."""
-    from apps.dashboard.views import _pick_accuracy_kpi
-
+def test_btts_only_signal_excluded_from_picks(client, db):
+    """Legacy BTTS-only rows are not listed after product drop."""
     league = League.objects.create(
         api_id=39,
         name="PL",
@@ -207,8 +198,8 @@ def test_btts_only_appears_once_with_dual_columns(client, db):
         season=2026,
         is_active=True,
     )
-    home = Team.objects.create(api_id=20, name="DualH")
-    away = Team.objects.create(api_id=21, name="DualA")
+    home = Team.objects.create(api_id=20, name="BttsOnly")
+    away = Team.objects.create(api_id=21, name="AwayX")
     start, end = current_batch_window()
     list_start = today_picks_start(start, end)
     kick = list_start + timedelta(hours=2)
@@ -229,31 +220,23 @@ def test_btts_only_appears_once_with_dual_columns(client, db):
         lambda_away=1.4,
         lambda_total=3.0,
         p_over_15=0.92,
-        p_over_25=0.72,
-        p_over_35=0.45,
+        p_over_25=0.55,
+        p_over_35=0.30,
         p_btts=0.70,
         features_json={
-            "signals": _signals(o25=True, btts=True),
+            "signals": {
+                "o15": False,
+                "o25": False,
+                "o35": False,
+                "btts": True,
+                "primary": "btts",
+            },
         },
     )
     response = client.get(reverse("picks"))
     assert response.status_code == 200
-    body = response.content.decode()
-    assert body.count("DualH") == 1
-    assert "BTTS" in body
-
-    fx.status = Fixture.Status.FT
-    fx.goals_home = 2
-    fx.goals_away = 1
-    fx.save()
-    kpi = _pick_accuracy_kpi(
-        Prediction.objects.select_related("fixture"),
-    )
-    assert kpi["o25"]["picked"] == 1
-    assert kpi["o25"]["wins"] == 1
-    assert kpi["btts"]["picked"] == 1
-    assert kpi["btts"]["wins"] == 1
-    assert kpi["count"] == 2
+    assert b"BttsOnly" not in response.content
+    assert b"BTTS" not in response.content
 
 
 def test_min_odds_filter() -> None:
@@ -333,7 +316,6 @@ def test_history_pick_accuracy(client, db):
     )
     assert kpi["o25"]["picked"] == 1
     assert kpi["o25"]["wins"] == 1
-    assert kpi["btts"]["picked"] == 0
     assert kpi["count"] == 1
 
     local = timezone.localtime(kick)

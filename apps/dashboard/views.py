@@ -34,7 +34,7 @@ FINISHED = (
 OVER_LINES = {
     "o25": 3,
 }
-PRIMARY_KEYS = ("o25", "btts")
+PRIMARY_KEYS = ("o25",)
 
 
 def _parse_int(raw: str | None) -> int | None:
@@ -102,10 +102,9 @@ def _apply_league_filter(
 
 
 def _primary_picks(qs: QuerySet) -> QuerySet:
-    """Matches with at least one product tip (O2.5 and/or BTTS)."""
+    """Matches with an Over 2.5 tip."""
     return qs.filter(
         Q(features_json__signals__o25=True)
-        | Q(features_json__signals__btts=True)
         | Q(features_json__signals__primary__in=PRIMARY_KEYS),
     )
 
@@ -326,9 +325,8 @@ def _market_stat() -> dict[str, Any]:
 def _pick_accuracy_kpi_list(
     preds: list[Prediction],
 ) -> dict:
-    """Separate won/picked for finished O2.5 and BTTS tips."""
+    """won/picked for finished Over 2.5 tips."""
     o25 = _market_stat()
-    btts = _market_stat()
     for pred in preds:
         fx = pred.fixture
         if not fx.is_finished:
@@ -336,21 +334,16 @@ def _pick_accuracy_kpi_list(
         if fx.goals_home is None or fx.goals_away is None:
             continue
         signals = (pred.features_json or {}).get("signals") or {}
+        if not signals.get("o25"):
+            continue
+        o25["picked"] += 1
         gh = int(fx.goals_home)
         ga = int(fx.goals_away)
-        if signals.get("o25"):
-            o25["picked"] += 1
-            if gh + ga >= OVER_LINES["o25"]:
-                o25["wins"] += 1
-        if signals.get("btts"):
-            btts["picked"] += 1
-            if gh >= 1 and ga >= 1:
-                btts["wins"] += 1
-    for block in (o25, btts):
-        if block["picked"]:
-            block["rate"] = block["wins"] / block["picked"]
+        if gh + ga >= OVER_LINES["o25"]:
+            o25["wins"] += 1
+    if o25["picked"]:
+        o25["rate"] = o25["wins"] / o25["picked"]
     return {
         "o25": o25,
-        "btts": btts,
-        "count": o25["picked"] + btts["picked"],
+        "count": o25["picked"],
     }

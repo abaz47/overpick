@@ -1,8 +1,6 @@
-"""Pick flags — Over 2.5 and BTTS (independent)."""
+"""Pick flags — Over 2.5 only."""
 
 from __future__ import annotations
-
-from django.conf import settings
 
 from apps.predictions.services.league_thresholds import (
     thresholds_for_league,
@@ -17,44 +15,24 @@ def build_signal_flags(
     p_btts: float | None = None,
     league_api_id: int | None = None,
 ) -> dict:
-    """Independent tips: O2.5 and/or BTTS above thresholds.
+    """Product tip: Over 2.5 above league/global threshold.
 
-    A match may carry both picks; UI shows one row with two columns.
+    ``p_btts`` is accepted for API compatibility but never tipped.
     """
+    _ = p_btts
     thrs = thresholds_for_league(league_api_id)
     thr25 = thrs["o25"]
-    thr_btts = float(
-        thrs.get(
-            "btts",
-            getattr(settings, "SIGNAL_THRESHOLD_BTTS", 0.62),
-        ),
-    )
     pick_o25 = p25 >= thr25
-    btts_p = 0.0 if p_btts is None else float(p_btts)
-    pick_btts = p_btts is not None and btts_p >= thr_btts
-
-    primary = None
-    primary_edge = None
-    if pick_o25:
-        primary = "o25"
-        primary_edge = p25 - thr25
-    elif pick_btts:
-        primary = "btts"
-        primary_edge = btts_p - thr_btts
 
     return {
         "o15": False,
         "o25": pick_o25,
         "o35": False,
-        "btts": pick_btts,
-        "primary": primary,
-        "primary_edge": primary_edge,
-        "thresholds": {
-            **dict(thrs),
-            "btts": thr_btts,
-        },
+        "btts": False,
+        "primary": "o25" if pick_o25 else None,
+        "primary_edge": (p25 - thr25) if pick_o25 else None,
+        "thresholds": dict(thrs),
         "p_over_15": p15,
         "p_over_25": p25,
         "p_over_35": p35,
-        "p_btts": btts_p if p_btts is not None else None,
     }

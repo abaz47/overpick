@@ -18,7 +18,6 @@ ENV_KEYS = {
     "o15": "SIGNAL_THRESHOLD_O15",
     "o25": "SIGNAL_THRESHOLD_O25",
     "o35": "SIGNAL_THRESHOLD_O35",
-    "btts": "SIGNAL_THRESHOLD_BTTS",
 }
 
 
@@ -49,14 +48,12 @@ class Command(BaseCommand):
             "o15": float(settings.SIGNAL_THRESHOLD_O15),
             "o25": float(settings.SIGNAL_THRESHOLD_O25),
             "o35": float(settings.SIGNAL_THRESHOLD_O35),
-            "btts": float(settings.SIGNAL_THRESHOLD_BTTS),
         }
         self.stdout.write(
             "Current thresholds: "
             f"O15={current['o15']:.2f} "
             f"O25={current['o25']:.2f} "
-            f"O35={current['o35']:.2f} "
-            f"BTTS={current['btts']:.2f}",
+            f"O35={current['o35']:.2f}",
         )
         suggestions = calibrate_all(current=current)
         payload = {"current": current, "suggested": {}}

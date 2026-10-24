@@ -15,45 +15,27 @@
     {% if fixture.is_finished %}
       · score
       <strong>{{ fixture.goals_home }}:{{ fixture.goals_away }}</strong>
-      (total {{ fixture.total_goals }})
     {% endif %}
   </p>
   {% if not prediction %}
     <div class="alert alert-warning">Prediction not built yet.</div>
   {% else %}
-    {% if signals.o25 or signals.btts %}
+    {% if signals.o25 %}
       <div class="alert alert-light border mb-3 py-2">
         Recommendation:
-        {% if signals.o25 %}
-          <strong>Pick Over 2.5</strong>
-          · min odds ≥ {{ prediction.p_over_25|min_odds }}
-          {% if fixture.is_finished %}
-            <span class="badge text-bg-{{ prediction.is_hit_over_25|hit_badge }} ms-1">
-              {{ prediction.is_hit_over_25|hit_label }}
-            </span>
-          {% endif %}
-        {% endif %}
-        {% if signals.o25 and signals.btts %}·{% endif %}
-        {% if signals.btts %}
-          <strong>Pick BTTS</strong>
-          · min odds ≥
-          {% if prediction.p_btts is not None %}
-            {{ prediction.p_btts|min_odds }}
-          {% else %}
-            {{ signals.p_btts|min_odds }}
-          {% endif %}
-          {% if fixture.is_finished %}
-            <span class="badge text-bg-{{ prediction.is_hit_btts|hit_badge }} ms-1">
-              {{ prediction.is_hit_btts|hit_label }}
-            </span>
-          {% endif %}
+        <strong>Pick Over 2.5</strong>
+        · min odds ≥ {{ prediction.p_over_25|min_odds }}
+        {% if fixture.is_finished %}
+          <span class="badge text-bg-{{ prediction.is_hit_over_25|hit_badge }} ms-1">
+            {{ prediction.is_hit_over_25|hit_label }}
+          </span>
         {% endif %}
       </div>
     {% else %}
       <div class="alert alert-secondary mb-3 py-2">No tip for this match.</div>
     {% endif %}
     <div class="row g-3 mb-2">
-      <div class="col-md-4">
+      <div class="col-md-6">
         <div class="card shadow-sm h-100">
           <div class="card-body">
             <div class="text-muted small">Expected goals</div>
@@ -67,7 +49,7 @@
           </div>
         </div>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-6">
         <div class="card shadow-sm h-100
                     {% if signals.o25 %}border-success{% endif %}">
           <div class="card-body">
@@ -83,39 +65,6 @@
             {% else %}
               <div class="small text-muted mt-1">
                 min odds ≥ {{ prediction.p_over_25|min_odds }}
-              </div>
-            {% endif %}
-          </div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="card shadow-sm h-100
-                    {% if signals.btts %}border-success{% endif %}">
-          <div class="card-body">
-            <div class="text-muted small">BTTS</div>
-            <div class="fs-4">
-              {% if prediction.p_btts is not None %}
-                {{ prediction.p_btts|pct }}
-              {% elif signals.p_btts is not None %}
-                {{ signals.p_btts|pct }}
-              {% else %}
-                —
-              {% endif %}
-            </div>
-            {% if prediction.p_btts is not None or signals.p_btts is not None %}
-              <div class="mt-1">
-                {% if signals.btts %}
-                  <span class="badge text-bg-success">Pick</span>
-                {% endif %}
-                <span class="small text-muted
-                             {% if signals.btts %}ms-1{% endif %}">
-                  min odds ≥
-                  {% if prediction.p_btts is not None %}
-                    {{ prediction.p_btts|min_odds }}
-                  {% else %}
-                    {{ signals.p_btts|min_odds }}
-                  {% endif %}
-                </span>
               </div>
             {% endif %}
           </div>

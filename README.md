@@ -63,9 +63,8 @@ History **won / picked** с `STATS_SINCE`
 
 Модель `poisson_v4`: last-N с decay + attack×defence×liga
 (без double-count opp-adjust) + caps на индексы/λ +
-Dixon–Coles. Продукт: независимые **Pick Over 2.5** и
-**Pick BTTS** (отдельные KPI; один ряд в таблице, если оба).
-O1.5/O3.5 только как контекст на карточке матча.
+Dixon–Coles. Продукт: **Pick Over 2.5**
+(O1.5/O3.5 только как контекст; BTTS снят с выдачи).
 UI: **Picks** = locked batch 07:30→+24h MSK.
 
 ```bash
@@ -90,7 +89,7 @@ python manage.py backtest_predictions
 python manage.py calibrate_thresholds
 # --apply только ужесточает глобальные thr (не ослабляет)
 ```
-
+а
 Проверка без API:
 
 ```bash
