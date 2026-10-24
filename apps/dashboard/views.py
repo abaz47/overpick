@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta
 from typing import Any
 
 from django.db.models import Q, QuerySet
+from django.db.models.functions import TruncDate
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
@@ -30,9 +31,6 @@ FINISHED = (
     Fixture.Status.AET,
     Fixture.Status.PEN,
 )
-# 1 = Yesterday; no "today" (live day lives on Picks).
-HISTORY_DAYS = ("1", "2", "3", "7", "30")
-DEFAULT_HISTORY_DAYS = "7"
 OVER_LINES = {
     "o25": 3,
 }
@@ -48,31 +46,27 @@ def _parse_int(raw: str | None) -> int | None:
         return None
 
 
-def _history_bounds(
-    days_raw: str,
-) -> tuple[datetime, datetime | None]:
-    """Return [since, until) for History, floored by STATS_SINCE."""
-    launch = stats_since()
-    now = timezone.now()
-    local = timezone.localtime(now)
-    today_start = local.replace(
-        hour=0,
-        minute=0,
-        second=0,
-        microsecond=0,
-    )
-    if days_raw == "1":
-        # Yesterday MSK only.
-        since = today_start - timedelta(days=1)
-        until = today_start
-        return max(since, launch), until
-    days = int(days_raw)
-    since = now - timedelta(days=days)
-    return max(since, launch), None
+def _parse_date(raw: str | None) -> date | None:
+    if not raw:
+        return None
+    try:
+        return date.fromisoformat(raw)
+    except ValueError:
+        return None
 
 
 def _msk_date(dt: datetime) -> date:
     return timezone.localtime(dt).date()
+
+
+def _day_bounds(day: date) -> tuple[datetime, datetime]:
+    """Return [day 00:00, next day 00:00) in local TZ as aware datetimes."""
+    tz = timezone.get_current_timezone()
+    start = timezone.make_aware(
+        datetime.combine(day, datetime.min.time()),
+        tz,
+    )
+    return start, start + timedelta(days=1)
 
 
 def _league_choices() -> list[dict[str, Any]]:
@@ -116,6 +110,48 @@ def _primary_picks(qs: QuerySet) -> QuerySet:
     )
 
 
+def _finished_pick_qs(
+    *,
+    league_api_id: int | None = None,
+) -> QuerySet:
+    qs = (
+        _primary_picks(Prediction.objects.all())
+        .filter(
+            fixture__status__in=FINISHED,
+            fixture__kickoff_at__gte=stats_since(),
+            fixture__goals_home__isnull=False,
+            fixture__goals_away__isnull=False,
+        )
+        .select_related(
+            "fixture",
+            "fixture__home",
+            "fixture__away",
+            "fixture__league",
+        )
+    )
+    return _apply_league_filter(qs, league_api_id)
+
+
+def _history_dates(
+    *,
+    league_api_id: int | None = None,
+) -> list[date]:
+    """MSK calendar days that have finished tips (newest first)."""
+    qs = _finished_pick_qs(league_api_id=league_api_id)
+    days = (
+        qs.annotate(
+            day=TruncDate(
+                "fixture__kickoff_at",
+                tzinfo=timezone.get_current_timezone(),
+            ),
+        )
+        .values_list("day", flat=True)
+        .distinct()
+        .order_by("-day")
+    )
+    return [d for d in days if d is not None]
+
+
 def _render_picks(
     request: HttpRequest,
     *,
@@ -145,7 +181,8 @@ def _render_picks(
     qs = _apply_league_filter(qs, league_api_id)
     qs = qs.order_by("fixture__kickoff_at", "pk")
     rows = list(qs)
-    kpi = _pick_accuracy_kpi_list(rows)
+    show_kpi = which == "today"
+    kpi = _pick_accuracy_kpi_list(rows) if show_kpi else None
     title = "Tomorrow" if which == "tomorrow" else "Today"
     return render(
         request,
@@ -153,6 +190,8 @@ def _render_picks(
         {
             "picks": rows,
             "kpi": kpi,
+            "show_kpi": show_kpi,
+            "show_score": which == "today",
             "league_api_id": league_api_id,
             "leagues": _league_choices(),
             "batch_start": list_start,
@@ -215,33 +254,24 @@ def match_detail(
 
 @require_GET
 def history(request: HttpRequest) -> HttpResponse:
-    """Finished picks grouped by MSK calendar day."""
+    """Finished picks for one MSK day that has tips."""
     league_api_id = _parse_int(request.GET.get("league"))
-    days_raw = request.GET.get("days", DEFAULT_HISTORY_DAYS)
-    if days_raw not in HISTORY_DAYS:
-        days_raw = DEFAULT_HISTORY_DAYS
+    available_dates = _history_dates(league_api_id=league_api_id)
+    selected = _parse_date(request.GET.get("date"))
+    if selected not in available_dates:
+        selected = available_dates[0] if available_dates else None
 
-    since, until = _history_bounds(days_raw)
-    qs = (
-        _primary_picks(Prediction.objects.all())
-        .filter(
-            fixture__status__in=FINISHED,
+    rows: list[Prediction] = []
+    if selected is not None:
+        since, until = _day_bounds(selected)
+        qs = _finished_pick_qs(
+            league_api_id=league_api_id,
+        ).filter(
             fixture__kickoff_at__gte=since,
-            fixture__goals_home__isnull=False,
-            fixture__goals_away__isnull=False,
+            fixture__kickoff_at__lt=until,
         )
-        .select_related(
-            "fixture",
-            "fixture__home",
-            "fixture__away",
-            "fixture__league",
-        )
-        .order_by("-fixture__kickoff_at")
-    )
-    if until is not None:
-        qs = qs.filter(fixture__kickoff_at__lt=until)
-    qs = _apply_league_filter(qs, league_api_id)
-    rows = list(qs)
+        rows = list(qs.order_by("-fixture__kickoff_at"))
+
     kpi = _pick_accuracy_kpi_list(rows)
     day_groups = _group_by_msk_day(rows)
 
@@ -250,7 +280,8 @@ def history(request: HttpRequest) -> HttpResponse:
         "dashboard/history.html",
         {
             "day_groups": day_groups,
-            "days": days_raw,
+            "available_dates": available_dates,
+            "selected_date": selected,
             "league_api_id": league_api_id,
             "leagues": _league_choices(),
             "kpi": kpi,

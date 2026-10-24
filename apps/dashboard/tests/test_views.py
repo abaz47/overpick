@@ -146,8 +146,11 @@ def test_tomorrows_picks_ok(client, db):
     assert response.status_code == 200
     assert b"Tomorrow" in response.content
     assert b"HomeT" in response.content
-    assert b"Pending" in response.content
     assert b"O2.5" in response.content
+    # Tomorrow: no accuracy cards / score column.
+    assert b"Picks Accuracy" not in response.content
+    assert b">Score<" not in response.content
+    assert b"Pending" not in response.content
 
 
 @pytest.mark.django_db
@@ -284,9 +287,8 @@ def test_match_detail_ok(client, sample_prediction):
 def test_history_empty_ok(client):
     response = client.get(reverse("history"))
     assert response.status_code == 200
-    assert b"won /" in response.content
-    assert b"Yesterday" in response.content
-    assert b"2 days" in response.content
+    assert b"No dates yet" in response.content
+    assert b"Yesterday" not in response.content
 
 
 @pytest.mark.django_db
@@ -334,13 +336,18 @@ def test_history_pick_accuracy(client, db):
     assert kpi["btts"]["picked"] == 0
     assert kpi["count"] == 1
 
-    response = client.get(reverse("history") + "?days=30")
+    local = timezone.localtime(kick)
+    day = local.strftime("%Y-%m-%d")
+    response = client.get(reverse("history") + f"?date={day}")
     assert response.status_code == 200
     assert b"1 won / 1 picked" in response.content
-    assert b"Yesterday" in response.content
+    assert b"Yesterday" not in response.content
     assert b"Over 3.5" not in response.content
-    local = timezone.localtime(kick)
     assert local.strftime("%d.%m.%Y").encode() in response.content
+    # Default (no date) picks latest day with stats.
+    default = client.get(reverse("history"))
+    assert default.status_code == 200
+    assert local.strftime("%d.%m.%Y").encode() in default.content
 
 
 @pytest.mark.django_db

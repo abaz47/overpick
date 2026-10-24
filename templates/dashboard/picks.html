@@ -25,44 +25,46 @@
       <button type="submit" class="btn btn-sm btn-primary w-100">Apply</button>
     </div>
   </form>
-  <div class="row g-3 mb-4">
-    <div class="col-md-6">
-      <div class="card shadow-sm h-100">
-        <div class="card-body py-3">
-          <div class="text-muted small">O2.5 Picks Accuracy</div>
-          <div class="fs-4">
-            {% if kpi.o25.picked %}
-              {{ kpi.o25.wins }} won / {{ kpi.o25.picked }} picked
-              {% if kpi.o25.rate is not None %}
-                <span class="text-muted small">({{ kpi.o25.rate|pct }})</span>
+  {% if show_kpi %}
+    <div class="row g-3 mb-4">
+      <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+          <div class="card-body py-3">
+            <div class="text-muted small">O2.5 Picks Accuracy</div>
+            <div class="fs-4">
+              {% if kpi.o25.picked %}
+                {{ kpi.o25.wins }} won / {{ kpi.o25.picked }} picked
+                {% if kpi.o25.rate is not None %}
+                  <span class="text-muted small">({{ kpi.o25.rate|pct }})</span>
+                {% endif %}
+              {% else %}
+                —
+                <span class="text-muted small">no finished tips yet</span>
               {% endif %}
-            {% else %}
-              —
-              <span class="text-muted small">no finished tips yet</span>
-            {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+          <div class="card-body py-3">
+            <div class="text-muted small">BTTS pick accuracy</div>
+            <div class="fs-4">
+              {% if kpi.btts.picked %}
+                {{ kpi.btts.wins }} won / {{ kpi.btts.picked }} picked
+                {% if kpi.btts.rate is not None %}
+                  <span class="text-muted small">({{ kpi.btts.rate|pct }})</span>
+                {% endif %}
+              {% else %}
+                —
+                <span class="text-muted small">no finished tips yet</span>
+              {% endif %}
+            </div>
           </div>
         </div>
       </div>
     </div>
-    <div class="col-md-6">
-      <div class="card shadow-sm h-100">
-        <div class="card-body py-3">
-          <div class="text-muted small">BTTS pick accuracy</div>
-          <div class="fs-4">
-            {% if kpi.btts.picked %}
-              {{ kpi.btts.wins }} won / {{ kpi.btts.picked }} picked
-              {% if kpi.btts.rate is not None %}
-                <span class="text-muted small">({{ kpi.btts.rate|pct }})</span>
-              {% endif %}
-            {% else %}
-              —
-              <span class="text-muted small">no finished tips yet</span>
-            {% endif %}
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  {% endif %}
   <div class="table-responsive">
     <table class="table table-sm table-hover bg-white shadow-sm">
       <thead class="table-light">
@@ -71,8 +73,10 @@
           <th>Match</th>
           <th class="text-center">O2.5</th>
           <th class="text-center">BTTS</th>
-          <th class="text-end">Score</th>
-          <th class="text-center">Result</th>
+          {% if show_score %}
+            <th class="text-end">Score</th>
+            <th class="text-center">Result</th>
+          {% endif %}
         </tr>
       </thead>
       <tbody>
@@ -103,34 +107,37 @@
                   <span class="text-muted">—</span>
                 {% endif %}
               </td>
-              <td class="text-end text-nowrap">
-                {% if f.is_finished %}
-                  {{ f.goals_home }}:{{ f.goals_away }}
-                {% else %}
-                  <span class="text-muted">—</span>
-                {% endif %}
-              </td>
-              <td class="text-center">
-                {% if f.is_finished %}
-                  {% if sig.o25 %}
-                    <span class="badge text-bg-{{ pred.is_hit_over_25|hit_badge }}">
-                      O2.5 {{ pred.is_hit_over_25|hit_label }}
-                    </span>
+              {% if show_score %}
+                <td class="text-end text-nowrap">
+                  {% if f.is_finished %}
+                    {{ f.goals_home }}:{{ f.goals_away }}
+                  {% else %}
+                    <span class="text-muted">—</span>
                   {% endif %}
-                  {% if sig.btts %}
-                    <span class="badge text-bg-{{ pred.is_hit_btts|hit_badge }}">
-                      BTTS {{ pred.is_hit_btts|hit_label }}
-                    </span>
+                </td>
+                <td class="text-center">
+                  {% if f.is_finished %}
+                    {% if sig.o25 %}
+                      <span class="badge text-bg-{{ pred.is_hit_over_25|hit_badge }}">
+                        O2.5 {{ pred.is_hit_over_25|hit_label }}
+                      </span>
+                    {% endif %}
+                    {% if sig.btts %}
+                      <span class="badge text-bg-{{ pred.is_hit_btts|hit_badge }}">
+                        BTTS {{ pred.is_hit_btts|hit_label }}
+                      </span>
+                    {% endif %}
+                  {% else %}
+                    <span class="badge text-bg-secondary">Pending</span>
                   {% endif %}
-                {% else %}
-                  <span class="badge text-bg-secondary">Pending</span>
-                {% endif %}
-              </td>
+                </td>
+              {% endif %}
             </tr>
           {% endwith %}
         {% empty %}
           <tr>
-            <td colspan="6" class="text-center text-muted py-4">
+            <td colspan="{% if show_score %}6{% else %}4{% endif %}"
+                class="text-center text-muted py-4">
               No tips in this window yet.
             </td>
           </tr>
