@@ -1,0 +1,29 @@
+# Dev / lint tools.
+-r requirements.txt
+
+ruff==0.17.2
+djlint==1.47.0
+pre_commit==4.7.0
+pytest==9.1.1
+pytest-django==4.14.0
+
+# Transitive pins used by lint tooling.
+click==8.5.0
+cssbeautifier==2.0.3
+jsbeautifier==2.0.3
+EditorConfig==0.17.1
+json5==0.17.3
+pathspec==1.1.1
+PyYAML==6.0.3
+regex==2026.9.29
+cfgv==3.5.0
+identify==2.6.20
+nodeenv==1.11.0
+virtualenv==21.14.13
+distlib==0.4.4
+filelock==4.2.4
+platformdirs==4.13.5
+python-discovery==1.6.4
+pluggy==1.7.0
+iniconfig==2.3.1
+Pygments==2.21.0

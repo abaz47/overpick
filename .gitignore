@@ -1,3 +1,13 @@
+# --- OverPick secrets & local overrides ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_rsa*
+secrets/
+docker-compose.override.yml
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

@@ -1,0 +1,43 @@
+[project]
+name = "overpick"
+version = "0.1.0"
+description = "OverPick — totals predictions"
+requires-python = ">=3.14"
+
+[tool.ruff]
+line-length = 79
+target-version = "py314"
+extend-exclude = [
+    ".venv",
+    "staticfiles",
+    "migrations",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "W",
+    "F",
+    "I",
+    "UP",
+    "B",
+    "SIM",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.djlint]
+profile = "django"
+extension = "html"
+indent = 2
+max_line_length = 79
+format_attribute_template_tags = true
+ignore = "H030,H031"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.local"
+python_files = ["tests.py", "test_*.py"]
+addopts = "-q"
