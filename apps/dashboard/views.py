@@ -146,7 +146,7 @@ def _render_picks(
     qs = qs.order_by("fixture__kickoff_at", "pk")
     rows = list(qs)
     kpi = _pick_accuracy_kpi_list(rows)
-    title = "Tomorrow's Picks" if which == "tomorrow" else "Today's Picks"
+    title = "Tomorrow" if which == "tomorrow" else "Today"
     return render(
         request,
         "dashboard/picks.html",

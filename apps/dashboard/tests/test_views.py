@@ -253,6 +253,16 @@ def test_btts_only_appears_once_with_dual_columns(client, db):
     assert kpi["count"] == 2
 
 
+def test_min_odds_filter() -> None:
+    from apps.dashboard.templatetags.dashboard_extras import (
+        min_odds,
+    )
+
+    assert min_odds(0.5) == "2.00"
+    assert min_odds(0.72) == "1.39"
+    assert min_odds(None) == "—"
+
+
 @pytest.mark.django_db
 def test_match_detail_ok(client, sample_prediction):
     fid = sample_prediction.fixture_id
@@ -263,6 +273,11 @@ def test_match_detail_ok(client, sample_prediction):
     body = response.content.decode()
     assert "2.5" in body
     assert "Home" in body
+    assert "min odds" in body
+    assert "Context" not in body
+    # Main list should not dump raw model % on picks page.
+    picks = client.get(reverse("picks"))
+    assert b"72%" not in picks.content
 
 
 @pytest.mark.django_db

@@ -4,21 +4,10 @@
   OverPick — {{ page_title }}
 {% endblock title %}
 {% block content %}
-  <div class="d-flex justify-content-between align-items-center mb-2">
+  <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h3 mb-0">{{ page_title }}</h1>
-    <span class="text-muted small">
-      Batch {{ batch_label }} MSK · {{ picks|length }} matches
-    </span>
+    <span class="text-muted small">{{ picks|length }} matches</span>
   </div>
-  <p class="small text-muted mb-3">
-    O2.5 / BTTS tips for
-    {{ batch_start|date:"d.m H:i" }} → {{ batch_end|date:"d.m H:i" }} MSK.
-    Tips stay fixed; results appear only after full time.
-    {% if which == "today" %}
-      Live site from {{ site_launch_at|date:"d.m.Y H:i" }} MSK;
-      History from {{ stats_since|date:"d.m.Y H:i" }} MSK.
-    {% endif %}
-  </p>
   <form method="get" class="row g-2 align-items-end mb-3">
     <div class="col-12 col-md-10">
       <label class="form-label small mb-1" for="league">League</label>
@@ -40,7 +29,7 @@
     <div class="col-md-6">
       <div class="card shadow-sm h-100">
         <div class="card-body py-3">
-          <div class="text-muted small">Finished Over 2.5</div>
+          <div class="text-muted small">O2.5 Picks Accuracy</div>
           <div class="fs-4">
             {% if kpi.o25.picked %}
               {{ kpi.o25.wins }} won / {{ kpi.o25.picked }} picked
@@ -58,7 +47,7 @@
     <div class="col-md-6">
       <div class="card shadow-sm h-100">
         <div class="card-body py-3">
-          <div class="text-muted small">Finished BTTS</div>
+          <div class="text-muted small">BTTS pick accuracy</div>
           <div class="fs-4">
             {% if kpi.btts.picked %}
               {{ kpi.btts.wins }} won / {{ kpi.btts.picked }} picked
@@ -80,8 +69,8 @@
         <tr>
           <th>Kickoff (MSK)</th>
           <th>Match</th>
-          <th class="text-end">O2.5</th>
-          <th class="text-end">BTTS</th>
+          <th class="text-center">O2.5</th>
+          <th class="text-center">BTTS</th>
           <th class="text-end">Score</th>
           <th class="text-center">Result</th>
         </tr>
@@ -100,24 +89,16 @@
                   {{ f.league.country }} · {{ f.league.name }}
                 </div>
               </td>
-              <td class="text-end">
+              <td class="text-center">
                 {% if sig.o25 %}
                   <span class="badge text-bg-success">Pick</span>
-                  <div>{{ pred.p_over_25|pct }}</div>
                 {% else %}
                   <span class="text-muted">—</span>
                 {% endif %}
               </td>
-              <td class="text-end">
+              <td class="text-center">
                 {% if sig.btts %}
                   <span class="badge text-bg-success">Pick</span>
-                  <div>
-                    {% if pred.p_btts is not None %}
-                      {{ pred.p_btts|pct }}
-                    {% else %}
-                      {{ sig.p_btts|pct }}
-                    {% endif %}
-                  </div>
                 {% else %}
                   <span class="text-muted">—</span>
                 {% endif %}
@@ -151,11 +132,7 @@
         {% empty %}
           <tr>
             <td colspan="6" class="text-center text-muted py-4">
-              {% if which == "tomorrow" %}
-                No O2.5 / BTTS picks for tomorrow's batch yet.
-              {% else %}
-                No O2.5 / BTTS picks in today's batch. Next lock at 07:30 MSK.
-              {% endif %}
+              No tips in this window yet.
             </td>
           </tr>
         {% endfor %}

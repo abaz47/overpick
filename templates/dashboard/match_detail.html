@@ -26,7 +26,7 @@
         Recommendation:
         {% if signals.o25 %}
           <strong>Pick Over 2.5</strong>
-          ({{ prediction.p_over_25|pct }})
+          · min odds ≥ {{ prediction.p_over_25|min_odds }}
           {% if fixture.is_finished %}
             <span class="badge text-bg-{{ prediction.is_hit_over_25|hit_badge }} ms-1">
               {{ prediction.is_hit_over_25|hit_label }}
@@ -36,7 +36,12 @@
         {% if signals.o25 and signals.btts %}·{% endif %}
         {% if signals.btts %}
           <strong>Pick BTTS</strong>
-          ({% if prediction.p_btts is not None %}{{ prediction.p_btts|pct }}{% else %}{{ signals.p_btts|pct }}{% endif %})
+          · min odds ≥
+          {% if prediction.p_btts is not None %}
+            {{ prediction.p_btts|min_odds }}
+          {% else %}
+            {{ signals.p_btts|min_odds }}
+          {% endif %}
           {% if fixture.is_finished %}
             <span class="badge text-bg-{{ prediction.is_hit_btts|hit_badge }} ms-1">
               {{ prediction.is_hit_btts|hit_label }}
@@ -45,14 +50,10 @@
         {% endif %}
       </div>
     {% else %}
-      <div class="alert alert-secondary mb-3 py-2">
-        No tip for this match
-        (O2.5={{ prediction.p_over_25|pct }},
-        BTTS={% if prediction.p_btts is not None %}{{ prediction.p_btts|pct }}{% else %}—{% endif %}).
-      </div>
+      <div class="alert alert-secondary mb-3 py-2">No tip for this match.</div>
     {% endif %}
     <div class="row g-3 mb-2">
-      <div class="col-md-3">
+      <div class="col-md-4">
         <div class="card shadow-sm h-100">
           <div class="card-body">
             <div class="text-muted small">Expected goals</div>
@@ -66,19 +67,28 @@
           </div>
         </div>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-4">
         <div class="card shadow-sm h-100
                     {% if signals.o25 %}border-success{% endif %}">
           <div class="card-body">
             <div class="text-muted small">Over 2.5</div>
             <div class="fs-4">{{ prediction.p_over_25|pct }}</div>
             {% if signals.o25 %}
-              <span class="badge text-bg-success">Pick</span>
+              <div class="mt-1">
+                <span class="badge text-bg-success">Pick</span>
+                <span class="small text-muted ms-1">
+                  min odds ≥ {{ prediction.p_over_25|min_odds }}
+                </span>
+              </div>
+            {% else %}
+              <div class="small text-muted mt-1">
+                min odds ≥ {{ prediction.p_over_25|min_odds }}
+              </div>
             {% endif %}
           </div>
         </div>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-4">
         <div class="card shadow-sm h-100
                     {% if signals.btts %}border-success{% endif %}">
           <div class="card-body">
@@ -92,23 +102,22 @@
                 —
               {% endif %}
             </div>
-            {% if signals.btts %}
-              <span class="badge text-bg-success">Pick</span>
+            {% if prediction.p_btts is not None or signals.p_btts is not None %}
+              <div class="mt-1">
+                {% if signals.btts %}
+                  <span class="badge text-bg-success">Pick</span>
+                {% endif %}
+                <span class="small text-muted
+                             {% if signals.btts %}ms-1{% endif %}">
+                  min odds ≥
+                  {% if prediction.p_btts is not None %}
+                    {{ prediction.p_btts|min_odds }}
+                  {% else %}
+                    {{ signals.p_btts|min_odds }}
+                  {% endif %}
+                </span>
+              </div>
             {% endif %}
-          </div>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="card shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-muted small">Context</div>
-            <div class="small mt-1">
-              Over 1.5 {{ prediction.p_over_15|pct }}
-              · Over 3.5 {{ prediction.p_over_35|pct }}
-            </div>
-            <div class="small text-muted mt-2">
-              Shown for context — tips are O2.5 / BTTS.
-            </div>
           </div>
         </div>
       </div>

@@ -16,6 +16,18 @@ def pct(value, digits: int = 0) -> str:
 
 
 @register.filter
+def min_odds(value, digits: int = 2) -> str:
+    """Fair decimal odds floor: 1 / P (min coeff to take the tip)."""
+    try:
+        number = float(value)
+    except TypeError, ValueError:
+        return "—"
+    if number <= 0.0:
+        return "—"
+    return f"{(1.0 / number):.{int(digits)}f}"
+
+
+@register.filter
 def hit_badge(value) -> str:
     """Bootstrap class for hit/miss/None."""
     if value is True:
