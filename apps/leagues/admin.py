@@ -16,11 +16,13 @@ class LeagueAdmin(admin.ModelAdmin):
         "season",
         "api_id",
         "is_active",
+        "last_synced_at",
     )
     list_filter = ("is_active", "country", "season")
     search_fields = ("name", "code", "country")
     list_editable = ("is_active",)
-    ordering = ("country", "name")
+    readonly_fields = ("last_synced_at",)
+    ordering = ("country", "name", "-season")
 
 
 @admin.register(Team)

@@ -4,11 +4,11 @@ from django.db import models
 
 
 class League(models.Model):
-    """Football competition tracked by OverPick."""
+    """Football competition for one API season year."""
 
     api_id = models.PositiveIntegerField(
-        unique=True,
         help_text="API-Football league id",
+        db_index=True,
     )
     name = models.CharField(max_length=128)
     country = models.CharField(max_length=64)
@@ -21,13 +21,24 @@ class League(models.Model):
         help_text="Season start year, e.g. 2025",
     )
     is_active = models.BooleanField(default=True)
+    # Set after a successful fixtures sync for this season.
+    last_synced_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["country", "name"]
+        ordering = ["country", "name", "-season"]
         verbose_name = "league"
         verbose_name_plural = "leagues"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["api_id", "season"],
+                name="leagues_league_api_season_uniq",
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"{self.name} ({self.season})"

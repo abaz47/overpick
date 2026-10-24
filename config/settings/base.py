@@ -100,6 +100,9 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
 STORAGES = {
+    "default": {
+        "BACKEND": ("django.core.files.storage.FileSystemStorage"),
+    },
     "staticfiles": {
         "BACKEND": ("whitenoise.storage.CompressedManifestStaticFilesStorage"),
     },
@@ -111,6 +114,13 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 API_FOOTBALL_KEY = os.environ.get(
     "API_FOOTBALL_KEY",
     "",
+)
+API_FOOTBALL_BASE_URL = os.environ.get(
+    "API_FOOTBALL_BASE_URL",
+    "https://v3.football.api-sports.io",
+)
+API_FOOTBALL_MIN_INTERVAL = float(
+    os.environ.get("API_FOOTBALL_MIN_INTERVAL", "0.5"),
 )
 
 MODEL_N = int(os.environ.get("MODEL_N", "5"))

@@ -30,8 +30,9 @@ SECURE_PROXY_SSL_HEADER = (
     "https",
 )
 
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+_use_https = os.environ.get("USE_HTTPS", "0") == "1"
+SESSION_COOKIE_SECURE = _use_https
+CSRF_COOKIE_SECURE = _use_https
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
