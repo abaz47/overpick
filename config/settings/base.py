@@ -130,18 +130,49 @@ MODEL_SHRINK_K = float(os.environ.get("MODEL_SHRINK_K", "3"))
 MODEL_LAST_WEIGHT = float(
     os.environ.get("MODEL_LAST_WEIGHT", "0.6"),
 )
+# Half-life (days) for last-N venue form decay.
+MODEL_DECAY_HALFLIFE_DAYS = float(
+    os.environ.get("MODEL_DECAY_HALFLIFE_DAYS", "90"),
+)
+# Dixon–Coles ρ (negative → more low-score dependence).
+MODEL_DC_RHO = float(os.environ.get("MODEL_DC_RHO", "-0.1"))
+# Caps to keep λ realistic (anti blow-up).
+MODEL_INDEX_MIN = float(os.environ.get("MODEL_INDEX_MIN", "0.6"))
+MODEL_INDEX_MAX = float(os.environ.get("MODEL_INDEX_MAX", "1.5"))
+MODEL_LAMBDA_SIDE_MAX = float(
+    os.environ.get("MODEL_LAMBDA_SIDE_MAX", "2.8"),
+)
+MODEL_LAMBDA_TOTAL_MAX = float(
+    os.environ.get("MODEL_LAMBDA_TOTAL_MAX", "5.0"),
+)
 
 # Default horizon for build_predictions / Upcoming UI.
 PREDICTION_HORIZON_DAYS = int(
     os.environ.get("PREDICTION_HORIZON_DAYS", "3"),
 )
 
+# Single Pick tier (former Strong levels).
 SIGNAL_THRESHOLD_O15 = float(
-    os.environ.get("SIGNAL_THRESHOLD_O15", "0.82"),
+    os.environ.get("SIGNAL_THRESHOLD_O15", "0.88"),
 )
 SIGNAL_THRESHOLD_O25 = float(
-    os.environ.get("SIGNAL_THRESHOLD_O25", "0.60"),
+    os.environ.get("SIGNAL_THRESHOLD_O25", "0.65"),
 )
 SIGNAL_THRESHOLD_O35 = float(
-    os.environ.get("SIGNAL_THRESHOLD_O35", "0.42"),
+    os.environ.get("SIGNAL_THRESHOLD_O35", "0.55"),
+)
+# Do not tip O3.5 above this (overconfidence guard).
+SIGNAL_O35_MAX_PROB = float(
+    os.environ.get("SIGNAL_O35_MAX_PROB", "0.70"),
+)
+
+# Soft launch (Today's picks + KPI). Format: MSK naive ISO.
+SITE_LAUNCH_AT = os.environ.get(
+    "SITE_LAUNCH_AT",
+    "2026-10-24T18:00:00",
+)
+# History storage / won-picked from this MSK datetime.
+STATS_SINCE = os.environ.get(
+    "STATS_SINCE",
+    "2026-10-25T00:00:00",
 )

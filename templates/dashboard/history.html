@@ -6,34 +6,26 @@
 {% block content %}
   <div class="d-flex justify-content-between align-items-center mb-2">
     <h1 class="h3 mb-0">History</h1>
-    <span class="text-muted small">{{ kpi.count }} matches</span>
+    <span class="text-muted small">
+      Over 2.5 since {{ stats_since|date:"d.m.Y H:i" }} MSK
+    </span>
   </div>
   <form method="get" class="row g-2 align-items-end mb-3">
     <div class="col-6 col-md-2">
       <label class="form-label small mb-1" for="days">Period</label>
       <select class="form-select form-select-sm" name="days" id="days">
-        <option value="7"
-                {% if days == "7" %}selected{% endif %}>7 days</option>
-        <option value="14"
-                {% if days == "14" %}selected{% endif %}>14 days</option>
+        <option value="1"
+                {% if days == "1" %}selected{% endif %}>Yesterday</option>
+        <option value="2"
+                {% if days == "2" %}selected{% endif %}>2 days</option>
+        <option value="3"
+                {% if days == "3" %}selected{% endif %}>3 days</option>
+        <option value="7" {% if days == "7" %}selected{% endif %}>Week</option>
         <option value="30"
-                {% if days == "30" %}selected{% endif %}>30 days</option>
-        <option value="90"
-                {% if days == "90" %}selected{% endif %}>90 days</option>
+                {% if days == "30" %}selected{% endif %}>Month</option>
       </select>
     </div>
-    <div class="col-6 col-md-2">
-      <label class="form-label small mb-1" for="market">Signal market</label>
-      <select class="form-select form-select-sm" name="market" id="market">
-        <option value="o15"
-                {% if market == "o15" %}selected{% endif %}>O1.5</option>
-        <option value="o25"
-                {% if market == "o25" %}selected{% endif %}>O2.5</option>
-        <option value="o35"
-                {% if market == "o35" %}selected{% endif %}>O3.5</option>
-      </select>
-    </div>
-    <div class="col-12 col-md-4">
+    <div class="col-12 col-md-8">
       <label class="form-label small mb-1" for="league">League</label>
       <select class="form-select form-select-sm" name="league" id="league">
         <option value="">All leagues</option>
@@ -46,134 +38,79 @@
       </select>
     </div>
     <div class="col-6 col-md-2">
-      <div class="form-check mt-4">
-        <input class="form-check-input"
-               type="checkbox"
-               name="signals"
-               value="1"
-               id="signals"
-               {% if signals_only %}checked{% endif %}>
-        <label class="form-check-label small"
-               for="signals">Signals only</label>
-      </div>
-    </div>
-    <div class="col-6 col-md-2">
       <button type="submit" class="btn btn-sm btn-primary w-100">Apply</button>
     </div>
   </form>
-  <div class="row g-2 mb-4">
-    <div class="col-md-4">
-      <div class="card shadow-sm">
-        <div class="card-body py-3">
-          <div class="text-muted small">Hit-rate O1.5</div>
-          <div class="fs-4">
-            {% if kpi.o15.rate is not None %}
-              {{ kpi.o15.rate|pct }}
-            {% else %}
-              —
-            {% endif %}
-          </div>
-          <div class="small text-muted">
-            {{ kpi.o15.hits }}/{{ kpi.o15.n }}
-            · avg P {{ kpi.avg15|pct }}
-          </div>
-        </div>
+  <div class="card shadow-sm mb-4">
+    <div class="card-body py-3">
+      <div class="text-muted small">Pick Over 2.5</div>
+      <div class="fs-4">
+        {% if kpi.o25.rate is not None %}
+          {{ kpi.o25.rate|pct }}
+        {% else %}
+          —
+        {% endif %}
       </div>
-    </div>
-    <div class="col-md-4">
-      <div class="card shadow-sm">
-        <div class="card-body py-3">
-          <div class="text-muted small">Hit-rate O2.5</div>
-          <div class="fs-4">
-            {% if kpi.o25.rate is not None %}
-              {{ kpi.o25.rate|pct }}
-            {% else %}
-              —
-            {% endif %}
-          </div>
-          <div class="small text-muted">
-            {{ kpi.o25.hits }}/{{ kpi.o25.n }}
-            · avg P {{ kpi.avg25|pct }}
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-4">
-      <div class="card shadow-sm">
-        <div class="card-body py-3">
-          <div class="text-muted small">Hit-rate O3.5</div>
-          <div class="fs-4">
-            {% if kpi.o35.rate is not None %}
-              {{ kpi.o35.rate|pct }}
-            {% else %}
-              —
-            {% endif %}
-          </div>
-          <div class="small text-muted">
-            {{ kpi.o35.hits }}/{{ kpi.o35.n }}
-            · avg P {{ kpi.avg35|pct }}
-          </div>
-        </div>
+      <div class="small text-muted">
+        {{ kpi.o25.wins }} won / {{ kpi.o25.picked }} picked
       </div>
     </div>
   </div>
-  <div class="table-responsive">
-    <table class="table table-sm table-hover bg-white shadow-sm">
-      <thead class="table-light">
-        <tr>
-          <th>Date (MSK)</th>
-          <th>Match</th>
-          <th class="text-end">Score</th>
-          <th class="text-end">P O2.5</th>
-          <th class="text-center">O1.5</th>
-          <th class="text-center">O2.5</th>
-          <th class="text-center">O3.5</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for pred in page %}
-          {% with f=pred.fixture %}
-            <tr>
-              <td class="small text-nowrap">{{ f.kickoff_at|date:"d.m.Y H:i" }}</td>
-              <td>
-                <a href="{% url 'match_detail' f.pk %}"
-                   class="text-decoration-none">
-                  {{ f.home.name }} — {{ f.away.name }}
-                </a>
-                <div class="small text-muted">{{ f.league.name }}</div>
-              </td>
-              <td class="text-end text-nowrap">
-                {{ f.goals_home }}:{{ f.goals_away }}
-                <span class="text-muted">({{ f.total_goals }})</span>
-              </td>
-              <td class="text-end">{{ pred.p_over_25|pct }}</td>
-              <td class="text-center">
-                <span class="badge text-bg-{{ pred.is_hit_over_15|hit_badge }}">
-                  {{ pred.is_hit_over_15|hit_label }}
-                </span>
-              </td>
-              <td class="text-center">
-                <span class="badge text-bg-{{ pred.is_hit_over_25|hit_badge }}">
-                  {{ pred.is_hit_over_25|hit_label }}
-                </span>
-              </td>
-              <td class="text-center">
-                <span class="badge text-bg-{{ pred.is_hit_over_35|hit_badge }}">
-                  {{ pred.is_hit_over_35|hit_label }}
-                </span>
-              </td>
-            </tr>
-          {% endwith %}
-        {% empty %}
+  {% for day in day_groups %}
+    <div class="d-flex justify-content-between align-items-baseline mb-2 mt-4">
+      <h2 class="h5 mb-0">{{ day.date|date:"d.m.Y" }}</h2>
+      <span class="small text-muted">
+        {{ day.kpi.o25.wins }} won / {{ day.kpi.o25.picked }} picked
+        {% if day.kpi.o25.rate is not None %}
+          ({{ day.kpi.o25.rate|pct }})
+        {% endif %}
+      </span>
+    </div>
+    <div class="table-responsive mb-3">
+      <table class="table table-sm table-hover bg-white shadow-sm mb-0">
+        <thead class="table-light">
           <tr>
-            <td colspan="7" class="text-center text-muted py-4">
-              No finished matches with locked predictions in this period.
-              History fills in after fixtures with a saved Prediction kick off.
-            </td>
+            <th>Time</th>
+            <th>Match</th>
+            <th class="text-end">Score</th>
+            <th>Pick</th>
+            <th class="text-end">P(O2.5)</th>
+            <th class="text-center">Result</th>
           </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% include "dashboard/_pagination.html" %}
+        </thead>
+        <tbody>
+          {% for pred in day.picks %}
+            {% with f=pred.fixture %}
+              <tr>
+                <td class="small text-nowrap">{{ f.kickoff_at|date:"H:i" }}</td>
+                <td>
+                  <a href="{% url 'match_detail' f.pk %}"
+                     class="text-decoration-none">
+                    {{ f.home.name }} — {{ f.away.name }}
+                  </a>
+                  <div class="small text-muted">{{ f.league.name }}</div>
+                </td>
+                <td class="text-end text-nowrap">
+                  {{ f.goals_home }}:{{ f.goals_away }}
+                  <span class="text-muted">({{ f.total_goals }})</span>
+                </td>
+                <td>Over 2.5</td>
+                <td class="text-end">{{ pred.p_over_25|pct }}</td>
+                <td class="text-center">
+                  <span class="badge text-bg-{{ pred.is_hit_over_25|hit_badge }}">
+                    {{ pred.is_hit_over_25|hit_label }}
+                  </span>
+                </td>
+              </tr>
+            {% endwith %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% empty %}
+    <div class="text-center text-muted py-4">
+      No finished Over 2.5 picks in this period yet.
+      Live tracking starts {{ stats_since|date:"d.m.Y H:i" }} MSK.
+    </div>
+  {% endfor %}
 {% endblock content %}

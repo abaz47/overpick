@@ -27,9 +27,9 @@ def hit_badge(value) -> str:
 
 @register.filter
 def hit_label(value) -> str:
-    """Short hit/miss label."""
+    """Short won/lost label for finished picks."""
     if value is True:
-        return "HIT"
+        return "Won"
     if value is False:
-        return "MISS"
+        return "Lost"
     return "—"

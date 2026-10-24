@@ -1,10 +1,10 @@
-"""Create locked Prediction rows for upcoming fixtures."""
+"""Create locked Prediction rows for the daily batch."""
 
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.db.models import QuerySet
@@ -12,15 +12,22 @@ from django.utils import timezone
 
 from apps.matches.models import Fixture
 from apps.predictions.models import Prediction
+from apps.predictions.services.batch import (
+    batch_containing,
+    current_batch_window,
+)
 from apps.predictions.services.form import (
     build_form_features,
     expected_goals,
 )
 from apps.predictions.services.poisson import p_over
+from apps.predictions.services.signals import (
+    build_signal_flags,
+)
 
 logger = logging.getLogger(__name__)
 
-MODEL_VERSION = "poisson_v1"
+MODEL_VERSION = "poisson_v4"
 
 UPCOMING_STATUSES = (
     Fixture.Status.NS,
@@ -37,13 +44,28 @@ class BuildStats:
     skipped_locked: int = 0
     skipped_form: int = 0
     errors: list[str] = field(default_factory=list)
+    batch_start: datetime | None = None
+    batch_end: datetime | None = None
 
 
 def upcoming_fixtures(
     *,
     days: int | None = None,
+    batch_window: tuple[datetime, datetime] | None = None,
 ) -> QuerySet[Fixture]:
-    """NS/TBD fixtures with kickoff in the future."""
+    """NS/TBD fixtures in the daily batch (or legacy horizon)."""
+    if batch_window is not None:
+        start, end = batch_window
+        return (
+            Fixture.objects.filter(
+                status__in=UPCOMING_STATUSES,
+                kickoff_at__gte=start,
+                kickoff_at__lt=end,
+            )
+            .select_related("home", "away", "league")
+            .order_by("kickoff_at")
+        )
+
     now = timezone.now()
     qs = (
         Fixture.objects.filter(
@@ -75,11 +97,15 @@ def predict_fixture(fixture: Fixture) -> Prediction:
     p25 = p_over(lam_h, lam_a, 2.5)
     p35 = p_over(lam_h, lam_a, 3.5)
     feats = features.to_json()
-    feats["signals"] = {
-        "o15": p15 >= float(settings.SIGNAL_THRESHOLD_O15),
-        "o25": p25 >= float(settings.SIGNAL_THRESHOLD_O25),
-        "o35": p35 >= float(settings.SIGNAL_THRESHOLD_O35),
-    }
+    feats["signals"] = build_signal_flags(
+        p15,
+        p25,
+        p35,
+        league_api_id=fixture.league.api_id,
+    )
+    b_start, b_end = batch_containing(fixture.kickoff_at)
+    feats["batch_start"] = b_start.isoformat()
+    feats["batch_end"] = b_end.isoformat()
     return Prediction.objects.create(
         fixture=fixture,
         model_version=MODEL_VERSION,
@@ -98,10 +124,29 @@ def build_predictions(
     *,
     days: int | None = None,
     force: bool = False,
+    use_batch: bool = True,
 ) -> BuildStats:
-    """Create predictions for upcoming fixtures."""
+    """Create predictions for today + tomorrow batch windows.
+
+    Default window: current 07:30 MSK batch and the next 24h
+    (Tomorrow's Picks preview). Pass use_batch=False for legacy.
+    """
     stats = BuildStats()
-    for fixture in upcoming_fixtures(days=days):
+    batch_window = None
+    if use_batch and days is None:
+        start, end = current_batch_window()
+        # Include tomorrow's slice for the Tomorrow page.
+        batch_window = (start, end + timedelta(days=1))
+        stats.batch_start, stats.batch_end = batch_window
+    elif days is None:
+        days = int(
+            getattr(settings, "PREDICTION_HORIZON_DAYS", 3),
+        )
+
+    for fixture in upcoming_fixtures(
+        days=days,
+        batch_window=batch_window,
+    ):
         stats.considered += 1
         existing = Prediction.objects.filter(
             fixture=fixture,

@@ -5,7 +5,12 @@ from django.urls import path
 from apps.dashboard import views
 
 urlpatterns = [
-    path("", views.upcoming, name="upcoming"),
+    path("", views.picks, name="picks"),
+    path(
+        "tomorrow/",
+        views.picks_tomorrow,
+        name="picks_tomorrow",
+    ),
     path(
         "matches/<int:fixture_id>/",
         views.match_detail,

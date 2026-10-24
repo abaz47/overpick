@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from django.db import transaction
-from django.db.models import QuerySet
+from django.db.models import Exists, OuterRef, Q, QuerySet
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
@@ -22,6 +22,9 @@ from apps.matches.services.api_football import (
 from apps.matches.services.status import map_status
 
 logger = logging.getLogger(__name__)
+
+# Keep year-1 seasons (e.g. 2025/26 EU) in the daily schedule sync.
+CURRENT_SEASON_LOOKBACK_YEARS = 1
 
 
 @dataclass
@@ -123,6 +126,153 @@ def _league_queryset(
             "season",
         )
     return qs
+
+
+def current_season_leagues() -> QuerySet[League]:
+    """Active leagues for current (+ lookback) seasons.
+
+    Includes seasons that still have upcoming fixtures even
+    if the year label is older (calendar vs EU seasons).
+    """
+    today = timezone.localdate()
+    min_year = today.year - CURRENT_SEASON_LOOKBACK_YEARS
+    upcoming = Fixture.objects.filter(
+        league_id=OuterRef("pk"),
+        status__in=(
+            Fixture.Status.NS,
+            Fixture.Status.TBD,
+        ),
+        kickoff_at__gte=timezone.now() - timedelta(days=1),
+    )
+    return (
+        League.objects.filter(is_active=True)
+        .filter(
+            Exists(upcoming) | Q(season__gte=min_year),
+        )
+        .order_by("country", "name", "season")
+    )
+
+
+def sync_schedule(
+    client: ApiFootballClient | None = None,
+    *,
+    max_requests: int | None = None,
+) -> SyncStats:
+    """Daily: full fixture list for current-season leagues."""
+    client = client or ApiFootballClient()
+    stats = SyncStats()
+    for league in current_season_leagues():
+        if max_requests is not None and client.request_count >= max_requests:
+            stats.stopped_reason = f"max_requests={max_requests}"
+            break
+        try:
+            league_stats = sync_league(league, client)
+        except RateLimitError as exc:
+            msg = f"{league}: {exc}"
+            logger.error("%s", msg)
+            stats.errors.append(msg)
+            stats.stopped_reason = "rate_limit"
+            break
+        except ApiFootballError as exc:
+            msg = f"{league}: {exc}"
+            logger.error("Schedule sync failed %s", league)
+            stats.errors.append(msg)
+            if _is_auth_error(exc):
+                stats.stopped_reason = "auth"
+                break
+            if _is_plan_season_error(exc):
+                league.is_active = False
+                league.save(
+                    update_fields=["is_active", "updated_at"],
+                )
+                stats.skipped += 1
+            continue
+        except Exception as exc:
+            msg = f"{league}: {exc}"
+            logger.exception("Schedule sync failed %s", league)
+            stats.errors.append(msg)
+            continue
+        stats.leagues += 1
+        stats.fixtures_seen += league_stats.fixtures_seen
+        stats.fixtures_created += league_stats.fixtures_created
+        stats.fixtures_updated += league_stats.fixtures_updated
+        stats.teams_created += league_stats.teams_created
+        stats.teams_updated += league_stats.teams_updated
+    stats.api_requests = client.request_count
+    return stats
+
+
+def sync_results(
+    client: ApiFootballClient | None = None,
+    *,
+    days_back: int = 1,
+    tz_name: str = "Europe/Moscow",
+) -> SyncStats:
+    """Hourly: upsert fixtures for today and recent days.
+
+    Uses fixtures?date=… (1 request per calendar day).
+    Only leagues already in DB are updated; others skipped.
+    """
+    client = client or ApiFootballClient()
+    stats = SyncStats()
+    today = timezone.localdate()
+    dates = [
+        today - timedelta(days=offset) for offset in range(days_back, -1, -1)
+    ]
+    for day in dates:
+        day_s = day.isoformat()
+        try:
+            raw_list = client.get_fixtures_by_date(
+                day_s,
+                tz=tz_name,
+            )
+        except RateLimitError as exc:
+            stats.errors.append(str(exc))
+            stats.stopped_reason = "rate_limit"
+            break
+        except ApiFootballError as exc:
+            stats.errors.append(f"{day_s}: {exc}")
+            continue
+        for item in raw_list:
+            try:
+                created, team_delta, skipped = _upsert_fixture_from_item(item)
+            except Exception as exc:
+                fid = _safe_fixture_id(item)
+                msg = f"fixture {fid}: {exc}"
+                logger.warning("Skip %s", msg)
+                stats.errors.append(msg)
+                continue
+            if skipped:
+                stats.skipped += 1
+                continue
+            stats.fixtures_seen += 1
+            if created:
+                stats.fixtures_created += 1
+            else:
+                stats.fixtures_updated += 1
+            stats.teams_created += team_delta[0]
+            stats.teams_updated += team_delta[1]
+    stats.api_requests = client.request_count
+    return stats
+
+
+def _upsert_fixture_from_item(
+    item: dict[str, Any],
+) -> tuple[bool, tuple[int, int], bool]:
+    """Resolve league from payload; skip unknown leagues."""
+    league_data = item.get("league") or {}
+    league_api_id = league_data.get("id")
+    season = league_data.get("season")
+    if not league_api_id or season is None:
+        raise ValueError("missing league.id/season")
+    league = League.objects.filter(
+        api_id=int(league_api_id),
+        season=int(season),
+    ).first()
+    if league is None:
+        return False, (0, 0), True
+    created, team_delta = _upsert_fixture(league, item)
+    return created, team_delta, False
 
 
 def _is_auth_error(exc: Exception) -> bool:

@@ -1,10 +1,11 @@
-"""Walk-forward backtest for poisson_v1 threshold calibration."""
+"""Walk-forward backtest for poisson_v3 threshold calibration."""
 
 from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
+from datetime import datetime
 
 from django.conf import settings
 
@@ -12,6 +13,8 @@ from apps.matches.models import Fixture
 from apps.predictions.services.form import (
     FINISHED,
     blend,
+    decay_weight,
+    lambdas_from_rates,
     shrink,
 )
 from apps.predictions.services.poisson import p_over
@@ -179,17 +182,41 @@ class BacktestReport:
 
 
 def _mean_pair(
-    samples: list[tuple[float, float]],
+    samples: list[tuple[datetime, float, float, int]],
     limit: int | None = None,
 ) -> tuple[float, float, int]:
-    """Average scored/conceded from (scored, conceded) samples."""
+    """Unweighted average of (scored, conceded) samples."""
     if not samples:
         return 0.0, 0.0, 0
     chunk = samples[-limit:] if limit else samples
     n = len(chunk)
-    scored = sum(s for s, _ in chunk) / n
-    conceded = sum(c for _, c in chunk) / n
+    scored = sum(s for _, s, _, _ in chunk) / n
+    conceded = sum(c for _, _, c, _ in chunk) / n
     return scored, conceded, n
+
+
+def _mean_pair_decay(
+    samples: list[tuple[datetime, float, float, int]],
+    *,
+    as_of: datetime,
+    limit: int,
+    half_life_days: float,
+) -> tuple[float, float, int]:
+    """Decay-weighted last-N (no per-match opponent adjust)."""
+    if not samples:
+        return 0.0, 0.0, 0
+    chunk = samples[-limit:]
+    w_sum = 0.0
+    scored_sum = 0.0
+    conceded_sum = 0.0
+    for kickoff, scored, conceded, _opp in chunk:
+        weight = decay_weight(as_of, kickoff, half_life_days)
+        w_sum += weight
+        scored_sum += weight * scored
+        conceded_sum += weight * conceded
+    if w_sum <= 0:
+        return 0.0, 0.0, 0
+    return scored_sum / w_sum, conceded_sum / w_sum, len(chunk)
 
 
 def _league_mu(
@@ -235,18 +262,22 @@ def iter_backtest_rows(
             getattr(settings, "MODEL_LAST_WEIGHT", 0.6),
         )
     )
+    half_life = float(
+        getattr(settings, "MODEL_DECAY_HALFLIFE_DAYS", 90.0),
+    )
 
-    home_hist: dict[int, list[tuple[float, float]]] = defaultdict(list)
-    away_hist: dict[int, list[tuple[float, float]]] = defaultdict(list)
+    # League-scoped venue history: (kick, scored, conceded, opp_id).
     home_league: dict[
         tuple[int, int],
-        list[tuple[float, float]],
+        list[tuple[datetime, float, float, int]],
     ] = defaultdict(list)
     away_league: dict[
         tuple[int, int],
-        list[tuple[float, float]],
+        list[tuple[datetime, float, float, int]],
     ] = defaultdict(list)
-    league_hist: dict[int, list[tuple[int, int]]] = defaultdict(list)
+    league_hist: dict[int, list[tuple[int, int]]] = defaultdict(
+        list,
+    )
 
     for fixture in fixtures:
         home_id = fixture.home_id
@@ -254,15 +285,12 @@ def iter_backtest_rows(
         league_id = fixture.league_id
         gh = int(fixture.goals_home)
         ga = int(fixture.goals_away)
+        kick = fixture.kickoff_at
 
-        hs_l, hc_l, n_hl = _mean_pair(
-            home_hist[home_id],
-            limit=n,
-        )
-        as_l, ac_l, n_al = _mean_pair(
-            away_hist[away_id],
-            limit=n,
-        )
+        home_samples = home_league[(home_id, league_id)]
+        away_samples = away_league[(away_id, league_id)]
+        n_hl = min(len(home_samples), n)
+        n_al = min(len(away_samples), n)
         enough = n_hl >= min_n and n_al >= min_n
 
         league = fixture.league
@@ -271,12 +299,20 @@ def iter_backtest_rows(
         if enough:
             mu_hs, mu_as = _league_mu(league_hist[league_id])
             mu_hc, mu_ac = mu_as, mu_hs
-            hs_s, hc_s, n_hs = _mean_pair(
-                home_league[(home_id, league_id)],
+            hs_l, hc_l, n_hl = _mean_pair_decay(
+                home_samples,
+                as_of=kick,
+                limit=n,
+                half_life_days=half_life,
             )
-            as_s, ac_s, n_as = _mean_pair(
-                away_league[(away_id, league_id)],
+            as_l, ac_l, n_al = _mean_pair_decay(
+                away_samples,
+                as_of=kick,
+                limit=n,
+                half_life_days=half_life,
             )
+            hs_s, hc_s, n_hs = _mean_pair(home_samples)
+            as_s, ac_s, n_as = _mean_pair(away_samples)
             hs_season = hs_s if n_hs else mu_hs
             hc_season = hc_s if n_hs else mu_hc
             as_season = as_s if n_as else mu_as
@@ -306,8 +342,14 @@ def iter_backtest_rows(
                 mu_ac,
                 shrink_k,
             )
-            lam_h = max((hs + ac) / 2.0, 0.0)
-            lam_a = max((as_ + hc) / 2.0, 0.0)
+            lam_h, lam_a = lambdas_from_rates(
+                hs,
+                hc,
+                as_,
+                ac,
+                mu_hs,
+                mu_as,
+            )
             row = BacktestRow(
                 fixture_id=fixture.pk,
                 league_api_id=league_api,
@@ -322,13 +364,11 @@ def iter_backtest_rows(
             )
 
         # Update histories AFTER forecasting (no leakage).
-        home_hist[home_id].append((float(gh), float(ga)))
-        away_hist[away_id].append((float(ga), float(gh)))
         home_league[(home_id, league_id)].append(
-            (float(gh), float(ga)),
+            (kick, float(gh), float(ga), away_id),
         )
         away_league[(away_id, league_id)].append(
-            (float(ga), float(gh)),
+            (kick, float(ga), float(gh), home_id),
         )
         league_hist[league_id].append((gh, ga))
 
@@ -375,9 +415,9 @@ def run_backtest(
 
 
 DEFAULT_THRESHOLDS = {
-    "o15": [0.70, 0.75, 0.80, 0.82, 0.85, 0.88, 0.90],
-    "o25": [0.45, 0.50, 0.55, 0.58, 0.60, 0.65, 0.70],
-    "o35": [0.28, 0.32, 0.36, 0.40, 0.42, 0.45, 0.50],
+    "o15": [0.80, 0.82, 0.85, 0.88, 0.90, 0.92],
+    "o25": [0.55, 0.58, 0.60, 0.65, 0.68, 0.70],
+    "o35": [0.36, 0.40, 0.42, 0.45, 0.48, 0.50],
 }
 
 
@@ -385,7 +425,7 @@ def format_report(report: BacktestReport) -> str:
     """Human-readable calibration text."""
     lines: list[str] = []
     n = len(report.rows)
-    lines.append("=== OverPick backtest (poisson_v1) ===")
+    lines.append("=== OverPick backtest (poisson_v4) ===")
     lines.append(
         f"considered={report.considered} "
         f"scored={n} skipped_form={report.skipped}",

@@ -22,7 +22,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
       <div class="container">
         <a class="navbar-brand fw-semibold"
-           href="{% url 'upcoming' %}">OverPick</a>
+           href="{% url 'picks' %}">OverPick</a>
         <button class="navbar-toggler"
                 type="button"
                 data-bs-toggle="collapse"
@@ -35,13 +35,15 @@
         <div class="collapse navbar-collapse" id="navMain">
           <div class="navbar-nav">
             <a class="nav-link
-                      {% if request.resolver_match.url_name == 'upcoming' %}active{% endif %}"
-               href="{% url 'upcoming' %}">Upcoming</a>
+                      {% if request.resolver_match.url_name == 'picks' %}active{% endif %}"
+               href="{% url 'picks' %}">Today</a>
+            <a class="nav-link
+                      {% if request.resolver_match.url_name == 'picks_tomorrow' %}active{% endif %}"
+               href="{% url 'picks_tomorrow' %}">Tomorrow</a>
             <a class="nav-link
                       {% if request.resolver_match.url_name == 'history' %}active{% endif %}"
                href="{% url 'history' %}">History</a>
           </div>
-          <span class="navbar-text ms-lg-auto small text-white-50">Times in MSK</span>
         </div>
       </div>
     </nav>

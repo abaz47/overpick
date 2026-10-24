@@ -1,34 +1,31 @@
-"""Build Poisson totals predictions for upcoming matches."""
+"""Build Poisson totals predictions for the daily batch."""
 
-from django.conf import settings
 from django.core.management.base import BaseCommand
 
+from apps.predictions.services.batch import batch_label
 from apps.predictions.services.build import (
     build_predictions,
 )
 
 
 class Command(BaseCommand):
-    """Create locked Prediction rows (poisson_v1)."""
+    """Create locked Prediction rows (poisson_v3)."""
 
     help = (
-        "Build Over 1.5/2.5/3.5 probabilities for "
-        "upcoming NS/TBD fixtures using venue form "
-        "+ independent Poisson."
+        "Build Over picks for fixtures in the current "
+        "07:30 MSK daily batch (next 24h). "
+        "Use --days N for a legacy rolling horizon."
     )
 
     def add_arguments(self, parser) -> None:
-        default_days = int(
-            getattr(settings, "PREDICTION_HORIZON_DAYS", 3),
-        )
         parser.add_argument(
             "--days",
             type=int,
-            default=default_days,
+            default=None,
             help=(
-                "Only fixtures within N days "
-                f"(default: {default_days}; "
-                "0 = all upcoming)"
+                "Legacy: only fixtures within N days "
+                "(disables daily batch). "
+                "0 = all upcoming NS/TBD"
             ),
         )
         parser.add_argument(
@@ -39,11 +36,14 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options) -> None:
         days = options["days"]
+        use_batch = days is None
         if days == 0:
             days = None
+            use_batch = False
         stats = build_predictions(
             days=days,
             force=options["force"],
+            use_batch=use_batch,
         )
         summary = (
             "build_predictions: "
@@ -53,6 +53,11 @@ class Command(BaseCommand):
             f"skipped_form={stats.skipped_form} "
             f"errors={len(stats.errors)}"
         )
+        if stats.batch_start is not None:
+            summary += (
+                f" batch={batch_label(stats.batch_start)}"
+                f"→{batch_label(stats.batch_end)}"
+            )
         for err in stats.errors:
             self.stderr.write(self.style.WARNING(err))
         self.stdout.write(self.style.SUCCESS(summary))

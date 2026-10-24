@@ -111,17 +111,27 @@ def test_predict_fixture_creates_locked_row() -> None:
 
 @pytest.mark.django_db
 def test_build_skips_locked_and_insufficient() -> None:
+    from apps.predictions.services.batch import (
+        current_batch_window,
+    )
+
     league = _league()
     home = _team(10, "H")
     away = _team(11, "A")
-    now = timezone.now()
+    start, end = current_batch_window()
+    kick = min(
+        timezone.now() + timedelta(hours=3),
+        end - timedelta(minutes=30),
+    )
+    if kick < start:
+        kick = start + timedelta(hours=1)
     upcoming = Fixture.objects.create(
         api_id=9002,
         league=league,
         season=league.season,
         home=home,
         away=away,
-        kickoff_at=now + timedelta(days=2),
+        kickoff_at=kick,
         status=Fixture.Status.NS,
     )
     stats = build_predictions()

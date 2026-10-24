@@ -5,15 +5,14 @@
 {% endblock title %}
 {% block content %}
   <p class="mb-2">
-    <a href="{% url 'upcoming' %}"
-       class="text-decoration-none small">← Upcoming</a>
+    <a href="{% url 'picks' %}" class="text-decoration-none small">← Picks</a>
   </p>
   <h1 class="h3 mb-1">{{ fixture.home.name }} — {{ fixture.away.name }}</h1>
   <p class="text-muted mb-3">
     {{ fixture.league.country }} · {{ fixture.league.name }}
     · {{ fixture.kickoff_at|date:"d.m.Y H:i" }} MSK
     · <span class="badge text-bg-secondary">{{ fixture.status }}</span>
-    {% if fixture.goals_home is not None %}
+    {% if fixture.is_finished %}
       · score
       <strong>{{ fixture.goals_home }}:{{ fixture.goals_away }}</strong>
       (total {{ fixture.total_goals }})
@@ -22,121 +21,62 @@
   {% if not prediction %}
     <div class="alert alert-warning">Prediction not built yet.</div>
   {% else %}
-    <div class="row g-3 mb-4">
-      <div class="col-md-3">
+    {% if signals.primary == "o25" %}
+      <div class="alert alert-light border mb-3 py-2">
+        Recommendation:
+        <strong>Pick Over 2.5</strong>
+        ({{ prediction.p_over_25|pct }})
+        {% if fixture.is_finished %}
+          <span class="badge text-bg-{{ prediction.is_hit_over_25|hit_badge }} ms-1">
+            {{ prediction.is_hit_over_25|hit_label }}
+          </span>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="alert alert-secondary mb-3 py-2">
+        No Over 2.5 tip for this match
+        (model P={{ prediction.p_over_25|pct }}, below threshold).
+      </div>
+    {% endif %}
+    <div class="row g-3 mb-2">
+      <div class="col-md-4">
         <div class="card shadow-sm h-100">
           <div class="card-body">
-            <div class="text-muted small">λ home / away / total</div>
-            <div class="fs-5">
-              {{ prediction.lambda_home|floatformat:2 }}
-              /
-              {{ prediction.lambda_away|floatformat:2 }}
-              /
+            <div class="text-muted small">Expected goals</div>
+            <div class="fs-4">
               <strong>{{ prediction.lambda_total|floatformat:2 }}</strong>
             </div>
-            <div class="small text-muted mt-1">Expected goals (Poisson mean)</div>
-            <div class="small text-muted">{{ prediction.model_version }}</div>
+            <div class="small text-muted mt-1">
+              Home {{ prediction.lambda_home|floatformat:2 }}
+              · Away {{ prediction.lambda_away|floatformat:2 }}
+            </div>
           </div>
         </div>
       </div>
-      <div class="col-md-3">
-        <div class="card shadow-sm h-100">
+      <div class="col-md-4">
+        <div class="card shadow-sm h-100
+                    {% if signals.primary == 'o25' %}border-success{% endif %}">
           <div class="card-body">
-            <div class="text-muted small">O1.5</div>
-            <div class="fs-4">{{ prediction.p_over_15|pct }}</div>
-            {% if signals.o15 %}
-              <span class="badge text-bg-primary">signal</span>
-            {% endif %}
-            {% if fixture.is_finished %}
-              <span class="badge text-bg-{{ prediction.is_hit_over_15|hit_badge }}">
-                {{ prediction.is_hit_over_15|hit_label }}
-              </span>
-            {% endif %}
-          </div>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="card shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-muted small">O2.5</div>
+            <div class="text-muted small">Over 2.5</div>
             <div class="fs-4">{{ prediction.p_over_25|pct }}</div>
-            {% if signals.o25 %}
-              <span class="badge text-bg-success">signal</span>
-            {% endif %}
-            {% if fixture.is_finished %}
-              <span class="badge text-bg-{{ prediction.is_hit_over_25|hit_badge }}">
-                {{ prediction.is_hit_over_25|hit_label }}
-              </span>
+            {% if signals.primary == "o25" %}
+              <span class="badge text-bg-success">Pick</span>
             {% endif %}
           </div>
         </div>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-4">
         <div class="card shadow-sm h-100">
           <div class="card-body">
-            <div class="text-muted small">O3.5</div>
-            <div class="fs-4">{{ prediction.p_over_35|pct }}</div>
-            {% if signals.o35 %}
-              <span class="badge text-bg-warning text-dark">signal</span>
-            {% endif %}
-            {% if fixture.is_finished %}
-              <span class="badge text-bg-{{ prediction.is_hit_over_35|hit_badge }}">
-                {{ prediction.is_hit_over_35|hit_label }}
-              </span>
-            {% endif %}
+            <div class="text-muted small">Context</div>
+            <div class="small mt-1">
+              Over 1.5 {{ prediction.p_over_15|pct }}
+              · Over 3.5 {{ prediction.p_over_35|pct }}
+            </div>
+            <div class="small text-muted mt-2">Shown for context only — tips are O2.5.</div>
           </div>
         </div>
       </div>
     </div>
-    <h2 class="h5">Form (model inputs)</h2>
-    <div class="table-responsive mb-3">
-      <table class="table table-sm bg-white shadow-sm">
-        <thead class="table-light">
-          <tr>
-            <th></th>
-            <th class="text-end">Scored</th>
-            <th class="text-end">Conceded</th>
-            <th class="text-end">N</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Home last-N (home)</td>
-            <td class="text-end">{{ features.home_last.scored|floatformat:2 }}</td>
-            <td class="text-end">{{ features.home_last.conceded|floatformat:2 }}</td>
-            <td class="text-end">{{ features.home_last.sample_size }}</td>
-          </tr>
-          <tr>
-            <td>Away last-N (away)</td>
-            <td class="text-end">{{ features.away_last.scored|floatformat:2 }}</td>
-            <td class="text-end">{{ features.away_last.conceded|floatformat:2 }}</td>
-            <td class="text-end">{{ features.away_last.sample_size }}</td>
-          </tr>
-          <tr>
-            <td>After blend/shrink HS/HC</td>
-            <td class="text-end">{{ features.hs|floatformat:2 }}</td>
-            <td class="text-end">{{ features.hc|floatformat:2 }}</td>
-            <td class="text-end">—</td>
-          </tr>
-          <tr>
-            <td>After blend/shrink AS/AC</td>
-            <td class="text-end">{{ features.as|floatformat:2 }}</td>
-            <td class="text-end">{{ features.ac|floatformat:2 }}</td>
-            <td class="text-end">—</td>
-          </tr>
-          <tr class="table-light">
-            <td>League μ (home / away scored)</td>
-            <td class="text-end">{{ features.league_mu_home_scored|floatformat:2 }}</td>
-            <td class="text-end">{{ features.league_mu_away_scored|floatformat:2 }}</td>
-            <td class="text-end">—</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <p class="small text-muted mb-0">
-      n={{ features.n }}, min_n={{ features.min_n }},
-      shrink_k={{ features.shrink_k }},
-      last_weight={{ features.last_weight }}
-    </p>
   {% endif %}
 {% endblock content %}

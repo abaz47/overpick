@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% load dashboard_extras %}
+{% block title %}
+  OverPick — {{ page_title }}
+{% endblock title %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h1 class="h3 mb-0">{{ page_title }}</h1>
+    <span class="text-muted small">
+      Batch {{ batch_label }} MSK · {{ picks|length }} Over 2.5 tips
+    </span>
+  </div>
+  <p class="small text-muted mb-3">
+    Over 2.5 tips for
+    {{ batch_start|date:"d.m H:i" }} → {{ batch_end|date:"d.m H:i" }} MSK.
+    Tips stay fixed; results appear only after full time.
+    {% if which == "today" %}
+      Live site from {{ site_launch_at|date:"d.m.Y H:i" }} MSK;
+      History from {{ stats_since|date:"d.m.Y H:i" }} MSK.
+    {% endif %}
+  </p>
+  <form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-12 col-md-10">
+      <label class="form-label small mb-1" for="league">League</label>
+      <select class="form-select form-select-sm" name="league" id="league">
+        <option value="">All leagues</option>
+        {% for lg in leagues %}
+          <option value="{{ lg.api_id }}"
+                  {% if league_api_id == lg.api_id %}selected{% endif %}>
+            {{ lg.country }} — {{ lg.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-2">
+      <button type="submit" class="btn btn-sm btn-primary w-100">Apply</button>
+    </div>
+  </form>
+  <div class="card shadow-sm mb-4">
+    <div class="card-body py-3">
+      <div class="text-muted small">Finished Over 2.5</div>
+      <div class="fs-4">
+        {% if kpi.o25.picked %}
+          {{ kpi.o25.wins }} won / {{ kpi.o25.picked }} picked
+          {% if kpi.o25.rate is not None %}
+            <span class="text-muted small">({{ kpi.o25.rate|pct }})</span>
+          {% endif %}
+        {% else %}
+          —
+          <span class="text-muted small">no finished tips yet</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm table-hover bg-white shadow-sm">
+      <thead class="table-light">
+        <tr>
+          <th>Kickoff (MSK)</th>
+          <th>Match</th>
+          <th>Pick</th>
+          <th class="text-end">P(O2.5)</th>
+          <th class="text-end">Score</th>
+          <th class="text-center">Result</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pred in picks %}
+          {% with f=pred.fixture %}
+            <tr>
+              <td class="text-nowrap small">{{ f.kickoff_at|date:"d.m H:i" }}</td>
+              <td>
+                <a href="{% url 'match_detail' f.pk %}"
+                   class="text-decoration-none">
+                  {{ f.home.name }} — {{ f.away.name }}
+                </a>
+                <div class="small text-muted">
+                  {{ f.league.country }} · {{ f.league.name }}
+                </div>
+              </td>
+              <td>
+                <span class="badge text-bg-success">Pick O2.5</span>
+              </td>
+              <td class="text-end">{{ pred.p_over_25|pct }}</td>
+              <td class="text-end text-nowrap">
+                {% if f.is_finished %}
+                  {{ f.goals_home }}:{{ f.goals_away }}
+                  <span class="text-muted">({{ f.total_goals }})</span>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                {% if f.is_finished %}
+                  <span class="badge text-bg-{{ pred.is_hit_over_25|hit_badge }}">
+                    {{ pred.is_hit_over_25|hit_label }}
+                  </span>
+                {% else %}
+                  <span class="badge text-bg-secondary">Pending</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endwith %}
+        {% empty %}
+          <tr>
+            <td colspan="6" class="text-center text-muted py-4">
+              {% if which == "tomorrow" %}
+                No Over 2.5 picks for tomorrow's batch yet.
+              {% else %}
+                No Over 2.5 picks in today's batch. Next lock at 07:30 MSK.
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock content %}

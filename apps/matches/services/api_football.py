@@ -79,6 +79,23 @@ class ApiFootballClient:
         self._raise_for_api_errors(data, league_id)
         return response
 
+    def get_fixtures_by_date(
+        self,
+        date: str,
+        *,
+        tz: str = "Europe/Moscow",
+    ) -> list[dict[str, Any]]:
+        """Fetch fixtures for one calendar date (YYYY-MM-DD)."""
+        params = {"date": date, "timezone": tz}
+        data = self._get("/fixtures", params=params)
+        response = data.get("response")
+        if not isinstance(response, list):
+            raise ApiFootballError(
+                f"Unexpected fixtures payload: missing list for date={date}",
+            )
+        self._raise_for_api_errors(data, context=f"date={date}")
+        return response
+
     def get_status(self) -> dict[str, Any]:
         """Return account quota info."""
         data = self._get("/status", params={})
