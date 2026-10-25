@@ -9,6 +9,7 @@ from datetime import datetime
 
 from django.conf import settings
 
+from apps.leagues.competitions import is_uefa_cup
 from apps.matches.models import Fixture
 from apps.predictions.services.form import (
     FINISHED,
@@ -282,6 +283,15 @@ def iter_backtest_rows(
         tuple[int, int],
         list[tuple[datetime, float, float, int]],
     ] = defaultdict(list)
+    # Cross-competition venue history for UEFA cups.
+    home_any: dict[
+        int,
+        list[tuple[datetime, float, float, int]],
+    ] = defaultdict(list)
+    away_any: dict[
+        int,
+        list[tuple[datetime, float, float, int]],
+    ] = defaultdict(list)
     league_hist: dict[int, list[tuple[int, int]]] = defaultdict(
         list,
     )
@@ -294,14 +304,18 @@ def iter_backtest_rows(
         ga = int(fixture.goals_away)
         kick = fixture.kickoff_at
 
-        home_samples = home_league[(home_id, league_id)]
-        away_samples = away_league[(away_id, league_id)]
+        league = fixture.league
+        league_api = league.api_id
+        if is_uefa_cup(league_api):
+            home_samples = home_any[home_id]
+            away_samples = away_any[away_id]
+        else:
+            home_samples = home_league[(home_id, league_id)]
+            away_samples = away_league[(away_id, league_id)]
         n_hl = min(len(home_samples), n)
         n_al = min(len(away_samples), n)
         enough = n_hl >= min_n and n_al >= min_n
 
-        league = fixture.league
-        league_api = league.api_id
         row: BacktestRow | None = None
         if enough:
             mu_hs, mu_as = _league_mu(league_hist[league_id])
@@ -378,6 +392,12 @@ def iter_backtest_rows(
             (kick, float(gh), float(ga), away_id),
         )
         away_league[(away_id, league_id)].append(
+            (kick, float(ga), float(gh), home_id),
+        )
+        home_any[home_id].append(
+            (kick, float(gh), float(ga), away_id),
+        )
+        away_any[away_id].append(
             (kick, float(ga), float(gh), home_id),
         )
         league_hist[league_id].append((gh, ga))

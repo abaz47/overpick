@@ -65,6 +65,7 @@ History **won / picked** с `STATS_SINCE`
 (без double-count opp-adjust) + caps на индексы/λ +
 Dixon–Coles. Продукт: **Pick Over 2.5**
 (O1.5/O3.5 только как контекст; BTTS снят с выдачи).
+UEFA UCL/UEL/UECL: форма клуба по всем матчам, μ — по кубку.
 UI: **Picks** = locked batch 07:30→+24h MSK.
 
 ```bash

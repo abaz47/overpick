@@ -9,6 +9,7 @@ from datetime import datetime
 from django.conf import settings
 from django.db.models import Avg, QuerySet
 
+from apps.leagues.competitions import form_league_scope
 from apps.leagues.models import Team
 from apps.matches.models import Fixture
 
@@ -330,6 +331,9 @@ def build_form_features(
     )
     before = fixture.kickoff_at
     league_id = fixture.league_id
+    league_api_id = fixture.league.api_id if fixture.league_id else None
+    # UEFA cups: venue form across all competitions; μ from cup.
+    form_league_id = form_league_scope(league_id, league_api_id)
     mu_hs, mu_as = league_means(league_id, before)
     mu_hc, mu_ac = mu_as, mu_hs
 
@@ -342,7 +346,7 @@ def build_form_features(
         limit=n,
         half_life_days=half_life_days,
         opponent_adjust=False,
-        league_id=league_id,
+        league_id=form_league_id,
     )
     away_last = team_venue_rates(
         fixture.away,
@@ -351,20 +355,20 @@ def build_form_features(
         limit=n,
         half_life_days=half_life_days,
         opponent_adjust=False,
-        league_id=league_id,
+        league_id=form_league_id,
     )
     home_season = team_venue_rates(
         fixture.home,
         home=True,
         before=before,
-        league_id=league_id,
+        league_id=form_league_id,
         half_life_days=0.0,
     )
     away_season = team_venue_rates(
         fixture.away,
         home=False,
         before=before,
-        league_id=league_id,
+        league_id=form_league_id,
         half_life_days=0.0,
     )
 

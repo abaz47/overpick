@@ -276,4 +276,140 @@ DEFAULT_LEAGUES: list[LeagueSeed] = [
         "country": "Croatia",
         "code": "HNL2",
     },
+    # Belgium
+    {
+        "api_id": 144,
+        "name": "Jupiler Pro League",
+        "country": "Belgium",
+        "code": "BJL",
+    },
+    {
+        "api_id": 145,
+        "name": "Challenger Pro League",
+        "country": "Belgium",
+        "code": "BCH",
+    },
+    # Scotland
+    {
+        "api_id": 179,
+        "name": "Premiership",
+        "country": "Scotland",
+        "code": "SPL",
+    },
+    {
+        "api_id": 180,
+        "name": "Championship",
+        "country": "Scotland",
+        "code": "SCH",
+    },
+    # Poland
+    {
+        "api_id": 106,
+        "name": "Ekstraklasa",
+        "country": "Poland",
+        "code": "PEK",
+    },
+    {
+        "api_id": 107,
+        "name": "I Liga",
+        "country": "Poland",
+        "code": "P1L",
+    },
+    # Czech Republic
+    {
+        "api_id": 345,
+        "name": "Czech Liga",
+        "country": "Czech-Republic",
+        "code": "CZL",
+    },
+    {
+        "api_id": 346,
+        "name": "FNL",
+        "country": "Czech-Republic",
+        "code": "FNL",
+    },
+    # Finland
+    {
+        "api_id": 244,
+        "name": "Veikkausliiga",
+        "country": "Finland",
+        "code": "VEI",
+    },
+    {
+        "api_id": 1087,
+        "name": "Ykkösliiga",
+        "country": "Finland",
+        "code": "YKK",
+    },
+    # Romania
+    {
+        "api_id": 283,
+        "name": "Liga I",
+        "country": "Romania",
+        "code": "ROI",
+    },
+    {
+        "api_id": 284,
+        "name": "Liga II",
+        "country": "Romania",
+        "code": "RO2",
+    },
+    # Greece
+    {
+        "api_id": 197,
+        "name": "Super League 1",
+        "country": "Greece",
+        "code": "GSL",
+    },
+    {
+        "api_id": 494,
+        "name": "Super League 2",
+        "country": "Greece",
+        "code": "GSL2",
+    },
+    # Mexico
+    {
+        "api_id": 262,
+        "name": "Liga MX",
+        "country": "Mexico",
+        "code": "LMX",
+    },
+    {
+        "api_id": 263,
+        "name": "Liga de Expansión MX",
+        "country": "Mexico",
+        "code": "LEX",
+    },
+    # Japan
+    {
+        "api_id": 98,
+        "name": "J1 League",
+        "country": "Japan",
+        "code": "J1",
+    },
+    {
+        "api_id": 99,
+        "name": "J2 League",
+        "country": "Japan",
+        "code": "J2",
+    },
+    # UEFA club competitions (form: all matches; μ: cup)
+    {
+        "api_id": 2,
+        "name": "UEFA Champions League",
+        "country": "World",
+        "code": "UCL",
+    },
+    {
+        "api_id": 3,
+        "name": "UEFA Europa League",
+        "country": "World",
+        "code": "UEL",
+    },
+    {
+        "api_id": 848,
+        "name": "UEFA Europa Conference League",
+        "country": "World",
+        "code": "UECL",
+    },
 ]
