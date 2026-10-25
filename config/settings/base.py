@@ -155,8 +155,9 @@ PREDICTION_HORIZON_DAYS = int(
 SIGNAL_THRESHOLD_O15 = float(
     os.environ.get("SIGNAL_THRESHOLD_O15", "0.88"),
 )
+# Applied to *calibrated* P(O2.5); targets ~60% empirical hit.
 SIGNAL_THRESHOLD_O25 = float(
-    os.environ.get("SIGNAL_THRESHOLD_O25", "0.65"),
+    os.environ.get("SIGNAL_THRESHOLD_O25", "0.60"),
 )
 SIGNAL_THRESHOLD_O35 = float(
     os.environ.get("SIGNAL_THRESHOLD_O35", "0.55"),

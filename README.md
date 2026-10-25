@@ -65,6 +65,8 @@ History **won / picked** с `STATS_SINCE`
 (без double-count opp-adjust) + caps на индексы/λ +
 Dixon–Coles. Продукт: **Pick Over 2.5**
 (O1.5/O3.5 только как контекст; BTTS снят с выдачи).
+Tip и min odds — по **калиброванному** P (reliability map
+из walk-forward), порог по умолчанию 0.60 на P_cal.
 UEFA UCL/UEL/UECL: форма клуба по всем матчам, μ — по кубку.
 UI: **Picks** = locked batch 00:00→+24h MSK (календарный день).
 

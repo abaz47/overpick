@@ -13,6 +13,9 @@ def test_o25_pick_when_above_threshold(settings) -> None:
     assert flags["btts"] is False
     assert flags["o15"] is False
     assert flags["o35"] is False
+    assert "p_over_25_cal" in flags
+    # Identity calibration file → cal ≈ raw.
+    assert abs(flags["p_over_25_cal"] - 0.72) < 0.05
 
 
 def test_no_pick_below_o25_threshold(settings) -> None:

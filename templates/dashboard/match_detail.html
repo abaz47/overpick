@@ -20,56 +20,65 @@
   {% if not prediction %}
     <div class="alert alert-warning">Prediction not built yet.</div>
   {% else %}
-    {% if signals.o25 %}
-      <div class="alert alert-light border mb-3 py-2">
-        Recommendation:
-        <strong>Pick Over 2.5</strong>
-        · min odds ≥ {{ prediction.p_over_25|min_odds }}
-        {% if fixture.is_finished %}
-          <span class="badge text-bg-{{ prediction.is_hit_over_25|hit_badge }} ms-1">
-            {{ prediction.is_hit_over_25|hit_label }}
-          </span>
-        {% endif %}
-      </div>
-    {% else %}
-      <div class="alert alert-secondary mb-3 py-2">No tip for this match.</div>
-    {% endif %}
-    <div class="row g-3 mb-2">
-      <div class="col-md-6">
-        <div class="card shadow-sm h-100">
-          <div class="card-body">
-            <div class="text-muted small">Expected goals</div>
-            <div class="fs-4">
-              <strong>{{ prediction.lambda_total|floatformat:2 }}</strong>
-            </div>
-            <div class="small text-muted mt-1">
-              Home {{ prediction.lambda_home|floatformat:2 }}
-              · Away {{ prediction.lambda_away|floatformat:2 }}
-            </div>
-          </div>
+    {% with p_cal=signals.p_over_25_cal %}
+      {% if signals.o25 %}
+        <div class="alert alert-light border mb-3 py-2">
+          Recommendation:
+          <strong>Pick Over 2.5</strong>
+          · min odds ≥ {{ p_cal|default:prediction.p_over_25|min_odds }}
+          {% if fixture.is_finished %}
+            <span class="badge text-bg-{{ prediction.is_hit_over_25|hit_badge }} ms-1">
+              {{ prediction.is_hit_over_25|hit_label }}
+            </span>
+          {% endif %}
         </div>
-      </div>
-      <div class="col-md-6">
-        <div class="card shadow-sm h-100
-                    {% if signals.o25 %}border-success{% endif %}">
-          <div class="card-body">
-            <div class="text-muted small">Over 2.5</div>
-            <div class="fs-4">{{ prediction.p_over_25|pct }}</div>
-            {% if signals.o25 %}
-              <div class="mt-1">
-                <span class="badge text-bg-success">Pick</span>
-                <span class="small text-muted ms-1">
-                  min odds ≥ {{ prediction.p_over_25|min_odds }}
-                </span>
+      {% else %}
+        <div class="alert alert-secondary mb-3 py-2">No tip for this match.</div>
+      {% endif %}
+      <div class="row g-3 mb-2">
+        <div class="col-md-6">
+          <div class="card shadow-sm h-100">
+            <div class="card-body">
+              <div class="text-muted small">Expected goals</div>
+              <div class="fs-4">
+                <strong>{{ prediction.lambda_total|floatformat:2 }}</strong>
               </div>
-            {% else %}
               <div class="small text-muted mt-1">
-                min odds ≥ {{ prediction.p_over_25|min_odds }}
+                Home {{ prediction.lambda_home|floatformat:2 }}
+                · Away {{ prediction.lambda_away|floatformat:2 }}
               </div>
-            {% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card shadow-sm h-100
+                      {% if signals.o25 %}border-success{% endif %}">
+            <div class="card-body">
+              <div class="text-muted small">Over 2.5 (calibrated)</div>
+              <div class="fs-4">
+                {% if p_cal is not None %}
+                  {{ p_cal|pct }}
+                {% else %}
+                  {{ prediction.p_over_25|pct }}
+                {% endif %}
+              </div>
+              <div class="small text-muted">model {{ prediction.p_over_25|pct }}</div>
+              {% if signals.o25 %}
+                <div class="mt-1">
+                  <span class="badge text-bg-success">Pick</span>
+                  <span class="small text-muted ms-1">
+                    min odds ≥ {{ p_cal|default:prediction.p_over_25|min_odds }}
+                  </span>
+                </div>
+              {% else %}
+                <div class="small text-muted mt-1">
+                  min odds ≥ {{ p_cal|default:prediction.p_over_25|min_odds }}
+                </div>
+              {% endif %}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    {% endwith %}
   {% endif %}
 {% endblock content %}

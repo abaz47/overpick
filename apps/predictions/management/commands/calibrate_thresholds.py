@@ -1,4 +1,4 @@
-"""Weekly-style threshold calibration from full backtest."""
+"""Fit P-calibration + suggest tip thresholds from backtest."""
 
 from __future__ import annotations
 
@@ -9,8 +9,10 @@ from pathlib import Path
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
+from apps.predictions.services.backtest import run_backtest
 from apps.predictions.services.calibrate import (
     calibrate_all,
+    fit_probability_calibration,
     write_league_calibration,
 )
 
@@ -22,11 +24,11 @@ ENV_KEYS = {
 
 
 class Command(BaseCommand):
-    """Suggest (and optionally apply) calibrated thresholds."""
+    """Refit O2.5 calibration and suggest SIGNAL_THRESHOLD_*."""
 
     help = (
-        "Walk-forward backtest → suggest SIGNAL_THRESHOLD_* "
-        "when hit_rate≈threshold and coverage≥5%. "
+        "Walk-forward backtest → fit raw→calibrated P(O2.5), "
+        "then suggest tip thresholds on calibrated scale. "
         "Use --apply to patch .env (then restart web)."
     )
 
@@ -44,18 +46,29 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options) -> None:
+        report = run_backtest()
+        cal_path = fit_probability_calibration(report.rows)
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"O2.5 calibration → {cal_path} (n={len(report.rows)})",
+            ),
+        )
+
         current = {
             "o15": float(settings.SIGNAL_THRESHOLD_O15),
             "o25": float(settings.SIGNAL_THRESHOLD_O25),
             "o35": float(settings.SIGNAL_THRESHOLD_O35),
         }
         self.stdout.write(
-            "Current thresholds: "
+            "Current thresholds (O2.5 on P_cal): "
             f"O15={current['o15']:.2f} "
             f"O25={current['o25']:.2f} "
             f"O35={current['o35']:.2f}",
         )
-        suggestions = calibrate_all(current=current)
+        suggestions = calibrate_all(
+            current=current,
+            rows=report.rows,
+        )
         payload = {"current": current, "suggested": {}}
         changed = False
         for market, cand in suggestions.items():
@@ -91,6 +104,7 @@ class Command(BaseCommand):
 
         league_data, league_path = write_league_calibration(
             global_thr=current,
+            rows=report.rows,
         )
         self.stdout.write(
             f"League overrides: {len(league_data)} → {league_path}",
@@ -113,7 +127,6 @@ class Command(BaseCommand):
         for market, cand in suggestions.items():
             if cand is None:
                 continue
-            # Never weaken global floors via --apply.
             if cand.threshold < current[market]:
                 self.stdout.write(
                     self.style.WARNING(
@@ -136,7 +149,8 @@ class Command(BaseCommand):
             applied += 1
         if applied == 0:
             self.stdout.write(
-                "Nothing stricter to apply (league JSON already updated).",
+                "Nothing stricter to apply (calibration + "
+                "league JSON already updated).",
             )
             return
         env_path.write_text(text, encoding="utf-8")
