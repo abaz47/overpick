@@ -43,8 +43,11 @@ def _prob_hit(
     row: BacktestRow,
     market: str,
 ) -> tuple[float, bool]:
-    """Probability used for tipping (calibrated for O2.5)."""
+    """Probability used for tipping (hybrid for O2.5)."""
     if market == "o25":
+        # Hybrid needs GBM feature rows; BacktestRow only has
+        # Poisson P — use calibrated Poisson here. League/global
+        # thr for O2.5 are refined via calibrate_hybrid_o25().
         return calibrate_o25(row.p_over_25), row.hit_25
     if market == "o15":
         return row.p_over_15, row.hit_15
@@ -53,6 +56,120 @@ def _prob_hit(
     if market == "btts":
         return row.p_btts, row.hit_btts
     raise KeyError(market)
+
+
+def calibrate_hybrid_o25(
+    *,
+    current_thr: float,
+    min_coverage: float = MIN_COVERAGE,
+    min_delta: float = MIN_DELTA,
+) -> CalibratedThreshold | None:
+    """Suggest O2.5 tip thr on hybrid scale (in-sample GBM)."""
+    from apps.predictions.services.gbm_model import (
+        hybrid_tip_prob,
+        is_model_ready,
+    )
+    from apps.predictions.services.gbm_prototype import (
+        collect_ml_rows,
+    )
+
+    if not is_model_ready():
+        return None
+    rows = collect_ml_rows()
+    if not rows:
+        return None
+    scored = []
+    for row in rows:
+        p = hybrid_tip_prob(row.features, row.p_pois_25)
+        scored.append((p, row.hit_25))
+    n = len(scored)
+    best: CalibratedThreshold | None = None
+    for thr in DEFAULT_THRESHOLDS["o25"]:
+        signals = hits = 0
+        for p, hit in scored:
+            if p >= thr:
+                signals += 1
+                hits += int(hit)
+        if signals == 0:
+            continue
+        cov = signals / n
+        if cov < min_coverage:
+            continue
+        hit_rate = hits / signals
+        score = abs(hit_rate - thr)
+        cand = CalibratedThreshold(
+            market="o25",
+            threshold=thr,
+            hit_rate=hit_rate,
+            signals=signals,
+            coverage=cov,
+            score=score,
+        )
+        if (
+            best is None
+            or cand.score < best.score
+            or (
+                abs(cand.score - best.score) < 1e-12
+                and cand.coverage > best.coverage
+            )
+        ):
+            best = cand
+    if best is None:
+        return None
+    if abs(best.threshold - current_thr) < min_delta:
+        return None
+    return best
+
+
+def calibrate_leagues_hybrid(
+    *,
+    global_thr: float,
+    min_rows: int = MIN_LEAGUE_ROWS,
+    min_coverage: float = 0.04,
+) -> dict[str, dict[str, float]]:
+    """Per-league O2.5 floors on hybrid tip probability."""
+    from apps.predictions.services.gbm_model import (
+        hybrid_tip_prob,
+        is_model_ready,
+    )
+    from apps.predictions.services.gbm_prototype import (
+        collect_ml_rows,
+    )
+
+    if not is_model_ready():
+        return {}
+    by_league: dict[int, list[tuple[float, bool]]] = defaultdict(
+        list,
+    )
+    for row in collect_ml_rows():
+        p = hybrid_tip_prob(row.features, row.p_pois_25)
+        by_league[row.league_api_id].append((p, row.hit_25))
+
+    result: dict[str, dict[str, float]] = {}
+    for league_id, pairs in sorted(by_league.items()):
+        if len(pairs) < min_rows:
+            continue
+        best_thr: float | None = None
+        best_score = 1e9
+        for thr in DEFAULT_THRESHOLDS["o25"]:
+            signals = hits = 0
+            for p, hit in pairs:
+                if p >= thr:
+                    signals += 1
+                    hits += int(hit)
+            if signals == 0:
+                continue
+            cov = signals / len(pairs)
+            if cov < min_coverage:
+                continue
+            hit_rate = hits / signals
+            score = abs(hit_rate - thr)
+            if thr >= global_thr + MIN_DELTA and score < best_score:
+                best_score = score
+                best_thr = thr
+        if best_thr is not None:
+            result[str(league_id)] = {"o25": best_thr}
+    return result
 
 
 def _threshold_grid_rows(

@@ -20,6 +20,9 @@ from apps.predictions.services.form import (
     build_form_features,
     expected_goals,
 )
+from apps.predictions.services.gbm_features import (
+    build_gbm_feature_dict,
+)
 from apps.predictions.services.poisson import p_btts, p_over
 from apps.predictions.services.signals import (
     build_signal_flags,
@@ -27,7 +30,7 @@ from apps.predictions.services.signals import (
 
 logger = logging.getLogger(__name__)
 
-MODEL_VERSION = "poisson_v4"
+MODEL_VERSION = "hybrid_v1"
 
 UPCOMING_STATUSES = (
     Fixture.Status.NS,
@@ -97,13 +100,25 @@ def predict_fixture(fixture: Fixture) -> Prediction:
     p25 = p_over(lam_h, lam_a, 2.5)
     p35 = p_over(lam_h, lam_a, 3.5)
     pb = p_btts(lam_h, lam_a)
+    gbm_feats = build_gbm_feature_dict(
+        fixture,
+        features,
+        p15=p15,
+        p25=p25,
+        p35=p35,
+        p_btts=pb,
+        lambda_home=lam_h,
+        lambda_away=lam_a,
+    )
     feats = features.to_json()
+    feats["gbm_features"] = gbm_feats
     feats["signals"] = build_signal_flags(
         p15,
         p25,
         p35,
         p_btts=pb,
         league_api_id=fixture.league.api_id,
+        gbm_features=gbm_feats,
     )
     b_start, b_end = batch_containing(fixture.kickoff_at)
     feats["batch_start"] = b_start.isoformat()

@@ -1,45 +1,78 @@
-"""Recompute Pick flags (O2.5) on locked predictions."""
+"""Recompute Pick flags (O2.5 hybrid) on locked predictions."""
 
 from __future__ import annotations
 
 from django.core.management.base import BaseCommand
 
 from apps.predictions.models import Prediction
+from apps.predictions.services.form import (
+    build_form_features,
+    expected_goals,
+)
+from apps.predictions.services.gbm_features import (
+    build_gbm_feature_dict,
+)
 from apps.predictions.services.signals import (
     build_signal_flags,
 )
 
 
 class Command(BaseCommand):
-    """Update features_json.signals from stored probabilities."""
+    """Update features_json.signals from stored / recomputed probs."""
 
     help = (
-        "Refresh Over 2.5 pick badges on existing predictions "
-        "without recomputing form (uses current thresholds)."
+        "Refresh Over 2.5 hybrid pick badges on existing "
+        "predictions (reuses gbm_features or rebuilds form)."
     )
 
     def handle(self, *args, **options) -> None:
         updated = 0
+        rebuilt = 0
         qs = Prediction.objects.select_related(
             "fixture__league",
+            "fixture__home",
+            "fixture__away",
         )
         for pred in qs.iterator():
             feats = dict(pred.features_json or {})
             league_api_id = None
             if pred.fixture_id and pred.fixture.league_id:
                 league_api_id = pred.fixture.league.api_id
+            gbm_feats = feats.get("gbm_features")
+            if not isinstance(gbm_feats, dict) and pred.fixture_id:
+                try:
+                    form = build_form_features(pred.fixture)
+                    if form.enough_data:
+                        lam_h, lam_a = expected_goals(form)
+                        gbm_feats = build_gbm_feature_dict(
+                            pred.fixture,
+                            form,
+                            p15=float(pred.p_over_15),
+                            p25=float(pred.p_over_25),
+                            p35=float(pred.p_over_35),
+                            p_btts=float(pred.p_btts or 0.0),
+                            lambda_home=lam_h,
+                            lambda_away=lam_a,
+                        )
+                        feats["gbm_features"] = gbm_feats
+                        rebuilt += 1
+                except Exception:
+                    gbm_feats = None
             feats["signals"] = build_signal_flags(
                 float(pred.p_over_15),
                 float(pred.p_over_25),
                 float(pred.p_over_35),
                 p_btts=pred.p_btts,
                 league_api_id=league_api_id,
+                gbm_features=gbm_feats
+                if isinstance(gbm_feats, dict)
+                else None,
             )
             pred.features_json = feats
             pred.save(update_fields=["features_json"])
             updated += 1
         self.stdout.write(
             self.style.SUCCESS(
-                f"refresh_signals: updated={updated}",
+                f"refresh_signals: updated={updated} gbm_rebuilt={rebuilt}",
             ),
         )

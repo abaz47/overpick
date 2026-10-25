@@ -61,12 +61,10 @@ History **won / picked** с `STATS_SINCE`
 
 ## Прогнозы тоталов (этап 3)
 
-Модель `poisson_v4`: last-N с decay + attack×defence×liga
-(без double-count opp-adjust) + caps на индексы/λ +
-Dixon–Coles. Продукт: **Pick Over 2.5**
-(O1.5/O3.5 только как контекст; BTTS снят с выдачи).
-Tip и min odds — по **калиброванному** P (reliability map
-из walk-forward), порог по умолчанию 0.60 на P_cal.
+База λ: `poisson_v4` (last-N + decay + att×def×liga +
+Dixon–Coles). Tip: **`hybrid_v1`** =
+`0.5·P_cal + 0.5·P_gbm` (LightGBM: form/rest/O2.5-rate),
+порог 0.60. Продукт — **Pick Over 2.5** only.
 UEFA UCL/UEL/UECL: форма клуба по всем матчам, μ — по кубку.
 UI: **Picks** = locked batch 00:00→+24h MSK (календарный день).
 
@@ -91,8 +89,11 @@ python manage.py build_predictions --force
 python manage.py backtest_predictions
 python manage.py calibrate_thresholds
 # --apply только ужесточает глобальные thr (не ослабляет)
+
+# прототип: Poisson vs GBM vs hybrid (не меняет tips)
+python manage.py prototype_gbm
 ```
-а
+
 Проверка без API:
 
 ```bash

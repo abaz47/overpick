@@ -1,4 +1,4 @@
-"""Fit P-calibration + suggest tip thresholds from backtest."""
+"""Fit P-calibration + GBM + suggest tip thresholds."""
 
 from __future__ import annotations
 
@@ -12,8 +12,13 @@ from django.core.management.base import BaseCommand
 from apps.predictions.services.backtest import run_backtest
 from apps.predictions.services.calibrate import (
     calibrate_all,
+    calibrate_hybrid_o25,
+    calibrate_leagues_hybrid,
     fit_probability_calibration,
-    write_league_calibration,
+)
+from apps.predictions.services.gbm_model import train_production_gbm
+from apps.predictions.services.league_thresholds import (
+    save_league_thresholds,
 )
 
 ENV_KEYS = {
@@ -24,12 +29,12 @@ ENV_KEYS = {
 
 
 class Command(BaseCommand):
-    """Refit O2.5 calibration and suggest SIGNAL_THRESHOLD_*."""
+    """Refit O2.5 calibration, GBM, and tip thresholds."""
 
     help = (
         "Walk-forward backtest → fit raw→calibrated P(O2.5), "
-        "then suggest tip thresholds on calibrated scale. "
-        "Use --apply to patch .env (then restart web)."
+        "train hybrid GBM, suggest tip thresholds on hybrid "
+        "scale. Use --apply to patch .env (then restart web)."
     )
 
     def add_arguments(self, parser) -> None:
@@ -44,6 +49,11 @@ class Command(BaseCommand):
             default=".env",
             help="Path to .env (default: .env)",
         )
+        parser.add_argument(
+            "--skip-gbm",
+            action="store_true",
+            help="Skip GBM retrain (debug).",
+        )
 
     def handle(self, *args, **options) -> None:
         report = run_backtest()
@@ -54,13 +64,19 @@ class Command(BaseCommand):
             ),
         )
 
+        if not options["skip_gbm"]:
+            gbm_path = train_production_gbm()
+            self.stdout.write(
+                self.style.SUCCESS(f"GBM model → {gbm_path}"),
+            )
+
         current = {
             "o15": float(settings.SIGNAL_THRESHOLD_O15),
             "o25": float(settings.SIGNAL_THRESHOLD_O25),
             "o35": float(settings.SIGNAL_THRESHOLD_O35),
         }
         self.stdout.write(
-            "Current thresholds (O2.5 on P_cal): "
+            "Current thresholds (O2.5 on hybrid): "
             f"O15={current['o15']:.2f} "
             f"O25={current['o25']:.2f} "
             f"O35={current['o35']:.2f}",
@@ -69,6 +85,18 @@ class Command(BaseCommand):
             current=current,
             rows=report.rows,
         )
+        # Override O2.5 suggestion with hybrid-scale search.
+        hybrid_cand = calibrate_hybrid_o25(
+            current_thr=current["o25"],
+        )
+        if hybrid_cand is not None:
+            suggestions["o25"] = hybrid_cand
+            self.stdout.write("O2.5 thr from hybrid grid.")
+        elif suggestions.get("o25") is not None:
+            self.stdout.write(
+                "O2.5 thr from Poisson-cal grid (no hybrid cand).",
+            )
+
         payload = {"current": current, "suggested": {}}
         changed = False
         for market, cand in suggestions.items():
@@ -102,12 +130,17 @@ class Command(BaseCommand):
         )
         self.stdout.write(f"Wrote {out}")
 
-        league_data, league_path = write_league_calibration(
-            global_thr=current,
-            rows=report.rows,
+        # Global thr for league floors: use suggested o25 if any.
+        o25_global = current["o25"]
+        if suggestions.get("o25") is not None:
+            o25_global = suggestions["o25"].threshold
+        league_data = calibrate_leagues_hybrid(
+            global_thr=o25_global,
         )
+        # Preserve o15/o35 from previous file via merge-max save.
+        league_path = save_league_thresholds(league_data)
         self.stdout.write(
-            f"League overrides: {len(league_data)} → {league_path}",
+            f"League hybrid overrides: {len(league_data)} → {league_path}",
         )
 
         if not options["apply"]:
@@ -150,7 +183,7 @@ class Command(BaseCommand):
         if applied == 0:
             self.stdout.write(
                 "Nothing stricter to apply (calibration + "
-                "league JSON already updated).",
+                "GBM + league JSON already updated).",
             )
             return
         env_path.write_text(text, encoding="utf-8")
