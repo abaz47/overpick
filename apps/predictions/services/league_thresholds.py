@@ -87,12 +87,31 @@ def save_league_thresholds(
     data: dict[str, dict[str, float]],
     path: Path | None = None,
 ) -> Path:
-    """Write league threshold map to JSON (stricter only)."""
+    """Write league threshold map to JSON (stricter only).
+
+    Merges with the existing file using per-market max so a
+    recalibration that finds no override does not wipe floors.
+    """
     target = path or _DATA_PATH
     target.parent.mkdir(parents=True, exist_ok=True)
     cleaned = stricter_only(data)
+    previous = _load_file()
+    merged: dict[str, dict[str, float]] = {}
+    for league_id in set(cleaned) | set(previous):
+        markets: dict[str, float] = {}
+        for market in MARKETS:
+            vals = []
+            if market in cleaned.get(league_id, {}):
+                vals.append(float(cleaned[league_id][market]))
+            if market in previous.get(league_id, {}):
+                vals.append(float(previous[league_id][market]))
+            if vals:
+                markets[market] = max(vals)
+        if markets:
+            merged[str(league_id)] = markets
+    merged = stricter_only(merged)
     target.write_text(
-        json.dumps(cleaned, indent=2, sort_keys=True) + "\n",
+        json.dumps(merged, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
     clear_threshold_cache()
