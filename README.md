@@ -44,19 +44,19 @@ python manage.py sync_results
 
 ```cron
 5 * * * * /opt/overpick/scripts/cron_results.sh
-30 7 * * * /opt/overpick/scripts/cron_daily.sh
+0 0 * * * /opt/overpick/scripts/cron_daily.sh
 ```
 
-`cron_daily.sh` (07:30 MSK): results → calibrate
+`cron_daily.sh` (00:00 MSK): results → calibrate
 (league overrides только **строже** глобальных) →
-schedule + `build_predictions` на окно суток →
-`refresh_signals`.
+schedule + `build_predictions --force` на календарные
+сутки → `refresh_signals`.
 
 Старт сайта: `SITE_LAUNCH_AT` (по умолчанию
 2026-10-24 18:00 MSK) — Today's Picks с этого времени.
 History **won / picked** с `STATS_SINCE`
-(2026-10-25 00:00 MSK), периоды Yesterday/2/3/Week/Month.
-Ежедневный lock Today+Tomorrow: cron 07:30 MSK.
+(2026-10-26 00:00 MSK).
+Ежедневный lock Today+Tomorrow: cron 00:00 MSK.
 Незавершённые матчи — только Pending (без счёта в KPI).
 
 ## Прогнозы тоталов (этап 3)
@@ -66,10 +66,10 @@ History **won / picked** с `STATS_SINCE`
 Dixon–Coles. Продукт: **Pick Over 2.5**
 (O1.5/O3.5 только как контекст; BTTS снят с выдачи).
 UEFA UCL/UEL/UECL: форма клуба по всем матчам, μ — по кубку.
-UI: **Picks** = locked batch 07:30→+24h MSK.
+UI: **Picks** = locked batch 00:00→+24h MSK (календарный день).
 
 ```bash
-# текущий суточный batch (07:30 MSK, +24h)
+# текущий суточный batch (00:00 MSK, +24h)
 python manage.py build_predictions
 
 # обновить только бейджи Pick на уже сохранённых

@@ -48,12 +48,12 @@ def stats_since() -> datetime:
         getattr(
             settings,
             "STATS_SINCE",
-            "2026-10-25T00:00:00",
+            "2026-10-26T00:00:00",
         ),
     )
     return _parse_msk(
         raw,
-        datetime(2026, 10, 25, 0, 0, 0),
+        datetime(2026, 10, 26, 0, 0, 0),
     )
 
 

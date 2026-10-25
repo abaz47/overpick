@@ -131,8 +131,8 @@ def build_predictions(
 ) -> BuildStats:
     """Create predictions for today + tomorrow batch windows.
 
-    Default window: current 07:30 MSK batch and the next 24h
-    (Tomorrow's Picks preview). Pass use_batch=False for legacy.
+    Default window: current calendar-day MSK batch and the
+    next 24h (Tomorrow's Picks). Pass use_batch=False for legacy.
     """
     stats = BuildStats()
     batch_window = None

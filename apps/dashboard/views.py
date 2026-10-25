@@ -206,13 +206,13 @@ def _render_picks(
 
 @require_GET
 def picks(request: HttpRequest) -> HttpResponse:
-    """Today's locked batch (07:30 → +24h MSK)."""
+    """Today's locked batch (00:00 → +24h MSK)."""
     return _render_picks(request, which="today")
 
 
 @require_GET
 def picks_tomorrow(request: HttpRequest) -> HttpResponse:
-    """Tomorrow's batch preview / next lock window."""
+    """Tomorrow's calendar-day batch preview."""
     return _render_picks(request, which="tomorrow")
 
 

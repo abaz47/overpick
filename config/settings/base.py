@@ -174,5 +174,5 @@ SITE_LAUNCH_AT = os.environ.get(
 # History storage / won-picked from this MSK datetime.
 STATS_SINCE = os.environ.get(
     "STATS_SINCE",
-    "2026-10-25T00:00:00",
+    "2026-10-26T00:00:00",
 )

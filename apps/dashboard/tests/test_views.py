@@ -94,12 +94,12 @@ def test_today_picks_start_uses_launch(settings) -> None:
 
     msk = ZoneInfo("Europe/Moscow")
     settings.SITE_LAUNCH_AT = "2026-10-24T18:00:00"
-    start = datetime(2026, 10, 24, 7, 30, tzinfo=msk)
-    end = datetime(2026, 10, 25, 7, 30, tzinfo=msk)
+    start = datetime(2026, 10, 24, 0, 0, tzinfo=msk)
+    end = datetime(2026, 10, 25, 0, 0, tzinfo=msk)
     assert today_picks_start(start, end) == site_launch_at()
     # After launch batch — full window.
-    later_start = datetime(2026, 10, 25, 7, 30, tzinfo=msk)
-    later_end = datetime(2026, 10, 26, 7, 30, tzinfo=msk)
+    later_start = datetime(2026, 10, 25, 0, 0, tzinfo=msk)
+    later_end = datetime(2026, 10, 26, 0, 0, tzinfo=msk)
     assert today_picks_start(later_start, later_end) == later_start
 
 

@@ -13,7 +13,7 @@ class Command(BaseCommand):
 
     help = (
         "Build Over picks for fixtures in the current "
-        "07:30 MSK daily batch (next 24h). "
+        "00:00 MSK calendar-day batch (next 24h). "
         "Use --days N for a legacy rolling horizon."
     )
 
