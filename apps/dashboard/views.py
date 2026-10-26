@@ -135,7 +135,12 @@ def _history_dates(
     *,
     league_api_id: int | None = None,
 ) -> list[date]:
-    """MSK calendar days that have finished tips (newest first)."""
+    """Completed MSK days with finished tips (newest first).
+
+    Today's (still open) calendar day is excluded — History
+    shows a day only after it has fully passed.
+    """
+    today = timezone.localdate()
     qs = _finished_pick_qs(league_api_id=league_api_id)
     days = (
         qs.annotate(
@@ -148,7 +153,7 @@ def _history_dates(
         .distinct()
         .order_by("-day")
     )
-    return [d for d in days if d is not None]
+    return [d for d in days if d is not None and d < today]
 
 
 def _render_picks(

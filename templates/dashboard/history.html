@@ -74,7 +74,6 @@
             <th>Time</th>
             <th>Match</th>
             <th class="text-end">Score</th>
-            <th class="text-end">P(O2.5)</th>
             <th class="text-center">Result</th>
           </tr>
         </thead>
@@ -91,7 +90,6 @@
                   <div class="small text-muted">{{ f.league.name }}</div>
                 </td>
                 <td class="text-end text-nowrap">{{ f.goals_home }}:{{ f.goals_away }}</td>
-                <td class="text-end">{{ pred.p_over_25|pct }}</td>
                 <td class="text-center">
                   <span class="badge text-bg-{{ pred.is_hit_over_25|hit_badge }}">
                     {{ pred.is_hit_over_25|hit_label }}

@@ -275,10 +275,19 @@ def test_history_empty_ok(client):
 
 
 @pytest.mark.django_db
-def test_history_pick_accuracy(client, db):
-    from apps.core.stats_window import stats_since
+def test_history_pick_accuracy(client, db, settings, monkeypatch):
+    from datetime import date, datetime
+    from zoneinfo import ZoneInfo
+
     from apps.dashboard.views import _pick_accuracy_kpi
 
+    settings.STATS_SINCE = "2026-10-20T00:00:00"
+    msk = ZoneInfo("Europe/Moscow")
+    # "Today" is 26.10 — History only lists completed days (< today).
+    monkeypatch.setattr(
+        "apps.dashboard.views.timezone.localdate",
+        lambda: date(2026, 10, 26),
+    )
     league = League.objects.create(
         api_id=39,
         name="PL",
@@ -288,7 +297,7 @@ def test_history_pick_accuracy(client, db):
     )
     home = Team.objects.create(api_id=10, name="H")
     away = Team.objects.create(api_id=11, name="A")
-    kick = stats_since() + timedelta(hours=1)
+    kick = datetime(2026, 10, 25, 15, 0, tzinfo=msk)
     fx = Fixture.objects.create(
         api_id=7001,
         league=league,
@@ -318,18 +327,66 @@ def test_history_pick_accuracy(client, db):
     assert kpi["o25"]["wins"] == 1
     assert kpi["count"] == 1
 
-    local = timezone.localtime(kick)
-    day = local.strftime("%Y-%m-%d")
+    day = "2026-10-25"
     response = client.get(reverse("history") + f"?date={day}")
     assert response.status_code == 200
     assert b"1 won / 1 picked" in response.content
     assert b"Yesterday" not in response.content
     assert b"Over 3.5" not in response.content
-    assert local.strftime("%d.%m.%Y").encode() in response.content
-    # Default (no date) picks latest day with stats.
+    assert b"P(O2.5)" not in response.content
+    assert b"25.10.2026" in response.content
+    # Default (no date) picks latest completed day with stats.
     default = client.get(reverse("history"))
     assert default.status_code == 200
-    assert local.strftime("%d.%m.%Y").encode() in default.content
+    assert b"25.10.2026" in default.content
+
+
+@pytest.mark.django_db
+def test_history_excludes_today(client, db, settings, monkeypatch):
+    from datetime import date, datetime
+    from zoneinfo import ZoneInfo
+
+    settings.STATS_SINCE = "2026-10-20T00:00:00"
+    msk = ZoneInfo("Europe/Moscow")
+    monkeypatch.setattr(
+        "apps.dashboard.views.timezone.localdate",
+        lambda: date(2026, 10, 26),
+    )
+    league = League.objects.create(
+        api_id=39,
+        name="PL",
+        country="England",
+        season=2026,
+        is_active=True,
+    )
+    home = Team.objects.create(api_id=20, name="H2")
+    away = Team.objects.create(api_id=21, name="A2")
+    fx = Fixture.objects.create(
+        api_id=7002,
+        league=league,
+        season=2026,
+        home=home,
+        away=away,
+        kickoff_at=datetime(2026, 10, 26, 12, 0, tzinfo=msk),
+        status=Fixture.Status.FT,
+        goals_home=3,
+        goals_away=1,
+    )
+    Prediction.objects.create(
+        fixture=fx,
+        lambda_home=1.5,
+        lambda_away=1.2,
+        lambda_total=2.7,
+        p_over_15=0.9,
+        p_over_25=0.7,
+        p_over_35=0.4,
+        p_btts=0.55,
+        features_json={"signals": _signals(o25=True)},
+    )
+    response = client.get(reverse("history"))
+    assert response.status_code == 200
+    assert b"26.10.2026" not in response.content
+    assert b"No dates yet" in response.content
 
 
 @pytest.mark.django_db
