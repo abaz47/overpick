@@ -1,6 +1,6 @@
 #!/bin/bash
-# Daily 00:00 MSK batch: results → calibrate (floor) →
-# schedule → locked picks for today+tomorrow calendar days.
+# Daily 20:00 MSK batch: results → calibrate (floor) →
+# schedule → locked picks for the next 48h (Today+Tomorrow).
 set -euo pipefail
 cd /opt/overpick
 mkdir -p logs reports

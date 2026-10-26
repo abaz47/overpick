@@ -1,4 +1,4 @@
-"""Daily Pick batch window (00:00 Europe/Moscow)."""
+"""Daily Pick batch window (20:00 Europe/Moscow)."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 from django.utils import timezone
 
-BATCH_HOUR = 0
+BATCH_HOUR = 20
 BATCH_MINUTE = 0
 
 
@@ -24,9 +24,10 @@ def current_batch_window(
 ) -> tuple[datetime, datetime]:
     """Return [batch_start, batch_end) for Today's Picks.
 
-    Cutover is 00:00 MSK (calendar day). Before midnight the
-    active batch is yesterday 00:00 → today 00:00; afterwards
-    today → tomorrow.
+    Cutover is 20:00 MSK. Before 20:00 the active batch is
+    yesterday 20:00 → today 20:00; afterwards today 20:00 →
+    tomorrow 20:00. Daily cron at 20:00 locks the next window
+    so tomorrow's matches appear early on Tomorrow's Picks.
     """
     local = timezone.localtime(now or timezone.now())
     today_cut = _cutover(local)
@@ -65,6 +66,6 @@ def batch_containing(
 
 
 def batch_label(start: datetime) -> str:
-    """Short MSK label for UI, e.g. 25.10 00:00."""
+    """Short MSK label for UI, e.g. 25.10 20:00."""
     local = timezone.localtime(start)
     return local.strftime("%d.%m %H:%M")

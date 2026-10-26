@@ -135,13 +135,15 @@ def _history_dates(
     *,
     league_api_id: int | None = None,
 ) -> list[date]:
-    """Completed MSK days with finished tips (newest first).
+    """Completed MSK calendar days with finished tips.
 
-    Today's (still open) calendar day is excluded — History
-    shows a day only after it has fully passed.
+    Only kickoffs strictly before today 00:00 MSK — the
+    current calendar day is never listed while it is open.
     """
-    today = timezone.localdate()
-    qs = _finished_pick_qs(league_api_id=league_api_id)
+    today_start, _ = _day_bounds(timezone.localdate())
+    qs = _finished_pick_qs(league_api_id=league_api_id).filter(
+        fixture__kickoff_at__lt=today_start,
+    )
     days = (
         qs.annotate(
             day=TruncDate(
@@ -153,7 +155,7 @@ def _history_dates(
         .distinct()
         .order_by("-day")
     )
-    return [d for d in days if d is not None and d < today]
+    return [d for d in days if d is not None]
 
 
 def _render_picks(
@@ -211,7 +213,7 @@ def _render_picks(
 
 @require_GET
 def picks(request: HttpRequest) -> HttpResponse:
-    """Today's locked batch (00:00 → +24h MSK)."""
+    """Today's locked batch (20:00 → +24h MSK)."""
     return _render_picks(request, which="today")
 
 
@@ -266,8 +268,11 @@ def history(request: HttpRequest) -> HttpResponse:
         selected = available_dates[0] if available_dates else None
 
     rows: list[Prediction] = []
+    today_start, _ = _day_bounds(timezone.localdate())
     if selected is not None:
         since, until = _day_bounds(selected)
+        # Never spill into the open calendar day.
+        until = min(until, today_start)
         qs = _finished_pick_qs(
             league_api_id=league_api_id,
         ).filter(
