@@ -63,4 +63,21 @@ def build_signal_flags(
         "p_hybrid": p_hybrid,
         "p_over_35": p35,
         "tip_scale": "hybrid" if gbm_p is not None else "cal",
+        # Set True by evening lock — never rewrite tip history.
+        "frozen": False,
     }
+
+
+def is_signals_frozen(features_json: dict | None) -> bool:
+    """True if tip flags were locked at the 20:00 evening job."""
+    signals = (features_json or {}).get("signals") or {}
+    return bool(signals.get("frozen"))
+
+
+def freeze_signals(features_json: dict | None) -> dict:
+    """Mark signals as immutable after evening publication."""
+    feats = dict(features_json or {})
+    signals = dict(feats.get("signals") or {})
+    signals["frozen"] = True
+    feats["signals"] = signals
+    return feats

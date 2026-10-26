@@ -14,7 +14,7 @@ class Command(BaseCommand):
     help = (
         "Build Over picks for Today/Tomorrow calendar days "
         "(00:00→00:00 MSK). Evening cron: "
-        "--window tomorrow --force (does not touch Today)."
+        "--window tomorrow --force --freeze."
     )
 
     def add_arguments(self, parser) -> None:
@@ -39,7 +39,14 @@ class Command(BaseCommand):
             action="store_true",
             help=(
                 "Replace existing locked predictions "
-                "inside the selected window only."
+                "inside the selected window (skips frozen)."
+            ),
+        )
+        parser.add_argument(
+            "--freeze",
+            action="store_true",
+            help=(
+                "Mark new predictions as frozen (evening publication lock)."
             ),
         )
 
@@ -59,6 +66,7 @@ class Command(BaseCommand):
             force=options["force"],
             use_batch=use_batch,
             window=window,
+            freeze=options["freeze"],
         )
         summary = (
             "build_predictions: "
@@ -66,6 +74,7 @@ class Command(BaseCommand):
             f"considered={stats.considered} "
             f"created={stats.created} "
             f"skipped_locked={stats.skipped_locked} "
+            f"skipped_frozen={stats.skipped_frozen} "
             f"skipped_form={stats.skipped_form} "
             f"errors={len(stats.errors)}"
         )

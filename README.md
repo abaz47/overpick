@@ -47,13 +47,13 @@ python manage.py sync_results
 0 20 * * * /opt/overpick/scripts/cron_daily.sh
 ```
 
-`cron_daily.sh` (**20:00 MSK**): results → calibrate →
-schedule → `build --window today` (без force) →
-`build --window tomorrow --force` →
-`refresh_signals --window tomorrow`.
-Today/Tomorrow в UI — календарные сутки **00:00→00:00 MSK**;
-вечерний job лочит только завтра и **не трогает**
-уже выбранные пики сегодняшнего дня.
+`cron_daily.sh` (**20:00 MSK**): results → calibrate
+(P_cal + GBM) → schedule → `build --window today`
+(без force) → `build --window tomorrow --force --freeze`.
+Today/Tomorrow — календарные сутки **00:00→00:00 MSK**.
+После 20:00 прогнозы на завтра **замораживаются**
+(`signals.frozen`) и больше не переписываются — история
+выданных tip’ов не правится задним числом.
 
 Старт сайта: `SITE_LAUNCH_AT` (по умолчанию
 2026-10-24 18:00 MSK) — Today's Picks с этого времени.
@@ -75,9 +75,11 @@ UI: **Picks** = календарный день 00:00→00:00 MSK.
 # Today + Tomorrow (без перезаписи locked)
 python manage.py build_predictions
 
-# вечером: только завтра (перезапись)
-python manage.py build_predictions --window tomorrow --force
-python manage.py refresh_signals --window tomorrow
+# вечером: публикация завтра + freeze
+python manage.py build_predictions --window tomorrow --force --freeze
+
+# днём: добавить новые tip’ы, не трогая уже выданные
+python manage.py refresh_signals --window today --untipped-only
 
 # legacy: горизонт N дней / все upcoming
 python manage.py build_predictions --days 3

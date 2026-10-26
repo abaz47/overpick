@@ -1,6 +1,6 @@
 #!/bin/bash
-# Daily 20:00 MSK: lock Tomorrow's calendar day without
-# touching Today's already locked tips (00:00→00:00 MSK).
+# Daily 20:00 MSK: publish Tomorrow's calendar day and freeze it.
+# Never rewrites frozen tips (history / issued-tip stats stay).
 set -euo pipefail
 cd /opt/overpick
 mkdir -p logs reports
@@ -13,13 +13,11 @@ mkdir -p logs reports
     python manage.py calibrate_thresholds
   docker compose exec -T web \
     python manage.py sync_schedule
-  # Fill gaps for today if any (never --force).
+  # Fill gaps for today if any (never --force / never unfreeze).
   docker compose exec -T web \
     python manage.py build_predictions --window today
-  # Rebuild tomorrow only.
+  # Publish tomorrow once, then freeze (no later corrections).
   docker compose exec -T web \
-    python manage.py build_predictions --window tomorrow --force
-  docker compose exec -T web \
-    python manage.py refresh_signals --window tomorrow
+    python manage.py build_predictions --window tomorrow --force --freeze
   echo "=== $(date -Is) evening batch done ==="
 } >> /opt/overpick/logs/daily.log 2>&1

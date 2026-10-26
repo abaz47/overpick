@@ -27,6 +27,8 @@ from apps.predictions.services.gbm_features import (
 from apps.predictions.services.poisson import p_btts, p_over
 from apps.predictions.services.signals import (
     build_signal_flags,
+    freeze_signals,
+    is_signals_frozen,
 )
 
 logger = logging.getLogger(__name__)
@@ -46,6 +48,7 @@ class BuildStats:
     considered: int = 0
     created: int = 0
     skipped_locked: int = 0
+    skipped_frozen: int = 0
     skipped_form: int = 0
     errors: list[str] = field(default_factory=list)
     batch_start: datetime | None = None
@@ -86,7 +89,11 @@ def upcoming_fixtures(
     return qs
 
 
-def predict_fixture(fixture: Fixture) -> Prediction:
+def predict_fixture(
+    fixture: Fixture,
+    *,
+    freeze: bool = False,
+) -> Prediction:
     """Compute and persist a locked prediction."""
     features = build_form_features(fixture)
     if not features.enough_data:
@@ -121,6 +128,8 @@ def predict_fixture(fixture: Fixture) -> Prediction:
         league_api_id=fixture.league.api_id,
         gbm_features=gbm_feats,
     )
+    if freeze:
+        feats = freeze_signals(feats)
     b_start, b_end = batch_containing(fixture.kickoff_at)
     feats["batch_start"] = b_start.isoformat()
     feats["batch_end"] = b_end.isoformat()
@@ -139,18 +148,38 @@ def predict_fixture(fixture: Fixture) -> Prediction:
     )
 
 
+def freeze_predictions_in_window(
+    start: datetime,
+    end: datetime,
+) -> int:
+    """Freeze tip flags for all predictions in [start, end)."""
+    updated = 0
+    qs = Prediction.objects.filter(
+        fixture__kickoff_at__gte=start,
+        fixture__kickoff_at__lt=end,
+    )
+    for pred in qs.iterator():
+        if is_signals_frozen(pred.features_json):
+            continue
+        pred.features_json = freeze_signals(pred.features_json)
+        pred.save(update_fields=["features_json"])
+        updated += 1
+    return updated
+
+
 def build_predictions(
     *,
     days: int | None = None,
     force: bool = False,
     use_batch: bool = True,
     window: str = "both",
+    freeze: bool = False,
 ) -> BuildStats:
     """Create predictions for calendar-day batch window(s).
 
     ``window``: ``today`` / ``tomorrow`` / ``both``.
-    Evening cron uses ``tomorrow`` + ``force`` so Today's
-    locked tips are never rewritten.
+    Evening cron: ``tomorrow`` + ``force`` + ``freeze`` so the
+    next day is published once and never rewritten.
     """
     stats = BuildStats()
     batch_window = None
@@ -177,6 +206,9 @@ def build_predictions(
             fixture=fixture,
         ).first()
         if existing is not None:
+            if is_signals_frozen(existing.features_json):
+                stats.skipped_frozen += 1
+                continue
             if existing.is_locked and not force:
                 stats.skipped_locked += 1
                 continue
@@ -186,7 +218,7 @@ def build_predictions(
                 stats.skipped_locked += 1
                 continue
         try:
-            predict_fixture(fixture)
+            predict_fixture(fixture, freeze=freeze)
         except ValueError as exc:
             logger.info(
                 "Skip fixture %s: %s",
