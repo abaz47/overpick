@@ -47,18 +47,19 @@ python manage.py sync_results
 0 20 * * * /opt/overpick/scripts/cron_daily.sh
 ```
 
-`cron_daily.sh` (**20:00 MSK**): results → calibrate
-(league overrides только **строже** глобальных) →
-schedule + `build_predictions --force` на окно
-20:00→+48h → `refresh_signals`. Так Tomorrow
-заполняется заранее вечером.
+`cron_daily.sh` (**20:00 MSK**): results → calibrate →
+schedule → `build --window today` (без force) →
+`build --window tomorrow --force` →
+`refresh_signals --window tomorrow`.
+Today/Tomorrow в UI — календарные сутки **00:00→00:00 MSK**;
+вечерний job лочит только завтра и **не трогает**
+уже выбранные пики сегодняшнего дня.
 
 Старт сайта: `SITE_LAUNCH_AT` (по умолчанию
 2026-10-24 18:00 MSK) — Today's Picks с этого времени.
 History **won / picked** с `STATS_SINCE`
 (2026-10-26 00:00 MSK); в списке — только
 **завершённые** календарные дни MSK.
-Ежедневный lock: cron **20:00 MSK**.
 Незавершённые матчи — только Pending (без счёта в KPI).
 
 ## Прогнозы тоталов (этап 3)
@@ -68,21 +69,19 @@ Dixon–Coles). Tip: **`hybrid_v1`** =
 `0.5·P_cal + 0.5·P_gbm` (LightGBM: form/rest/O2.5-rate),
 порог 0.60. Продукт — **Pick Over 2.5** only.
 UEFA UCL/UEL/UECL: форма клуба по всем матчам, μ — по кубку.
-UI: **Picks** = locked batch 20:00→+24h MSK.
+UI: **Picks** = календарный день 00:00→00:00 MSK.
 
 ```bash
-# текущий суточный batch (20:00 MSK, +24h / build +48h)
+# Today + Tomorrow (без перезаписи locked)
 python manage.py build_predictions
 
-# обновить только бейджи Pick на уже сохранённых
-python manage.py refresh_signals
+# вечером: только завтра (перезапись)
+python manage.py build_predictions --window tomorrow --force
+python manage.py refresh_signals --window tomorrow
 
 # legacy: горизонт N дней / все upcoming
 python manage.py build_predictions --days 3
 python manage.py build_predictions --days 0
-
-# перезаписать locked-прогнозы batch
-python manage.py build_predictions --force
 ```
 
 Калибровка порогов (длинный walk-forward):

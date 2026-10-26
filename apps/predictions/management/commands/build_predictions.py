@@ -1,6 +1,6 @@
-"""Build Poisson totals predictions for the daily batch."""
+"""Build totals predictions for calendar-day batch windows."""
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 from apps.predictions.services.batch import batch_label
 from apps.predictions.services.build import (
@@ -9,12 +9,12 @@ from apps.predictions.services.build import (
 
 
 class Command(BaseCommand):
-    """Create locked Prediction rows (poisson_v3)."""
+    """Create locked Prediction rows (hybrid_v1)."""
 
     help = (
-        "Build Over picks for fixtures in the current "
-        "20:00 MSK batch window (build covers +48h). "
-        "Use --days N for a legacy rolling horizon."
+        "Build Over picks for Today/Tomorrow calendar days "
+        "(00:00→00:00 MSK). Evening cron: "
+        "--window tomorrow --force (does not touch Today)."
     )
 
     def add_arguments(self, parser) -> None:
@@ -29,9 +29,18 @@ class Command(BaseCommand):
             ),
         )
         parser.add_argument(
+            "--window",
+            choices=("today", "tomorrow", "both"),
+            default="both",
+            help="Which calendar-day batch to build.",
+        )
+        parser.add_argument(
             "--force",
             action="store_true",
-            help="Replace existing locked predictions",
+            help=(
+                "Replace existing locked predictions "
+                "inside the selected window only."
+            ),
         )
 
     def handle(self, *args, **options) -> None:
@@ -40,13 +49,20 @@ class Command(BaseCommand):
         if days == 0:
             days = None
             use_batch = False
+        window = options["window"]
+        if not use_batch and window != "both":
+            raise CommandError(
+                "--window requires batch mode (omit --days).",
+            )
         stats = build_predictions(
             days=days,
             force=options["force"],
             use_batch=use_batch,
+            window=window,
         )
         summary = (
             "build_predictions: "
+            f"window={window} "
             f"considered={stats.considered} "
             f"created={stats.created} "
             f"skipped_locked={stats.skipped_locked} "

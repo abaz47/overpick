@@ -14,6 +14,7 @@ from apps.matches.models import Fixture
 from apps.predictions.models import Prediction
 from apps.predictions.services.batch import (
     batch_containing,
+    batch_window_for,
     current_batch_window,
 )
 from apps.predictions.services.form import (
@@ -143,18 +144,24 @@ def build_predictions(
     days: int | None = None,
     force: bool = False,
     use_batch: bool = True,
+    window: str = "both",
 ) -> BuildStats:
-    """Create predictions for today + tomorrow batch windows.
+    """Create predictions for calendar-day batch window(s).
 
-    Default window: current calendar-day MSK batch and the
-    next 24h (Tomorrow's Picks). Pass use_batch=False for legacy.
+    ``window``: ``today`` / ``tomorrow`` / ``both``.
+    Evening cron uses ``tomorrow`` + ``force`` so Today's
+    locked tips are never rewritten.
     """
     stats = BuildStats()
     batch_window = None
     if use_batch and days is None:
-        start, end = current_batch_window()
-        # Include tomorrow's slice for the Tomorrow page.
-        batch_window = (start, end + timedelta(days=1))
+        if window == "today":
+            batch_window = batch_window_for("today")
+        elif window == "tomorrow":
+            batch_window = batch_window_for("tomorrow")
+        else:
+            start, end = current_batch_window()
+            batch_window = (start, end + timedelta(days=1))
         stats.batch_start, stats.batch_end = batch_window
     elif days is None:
         days = int(

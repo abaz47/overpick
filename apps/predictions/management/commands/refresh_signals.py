@@ -5,6 +5,7 @@ from __future__ import annotations
 from django.core.management.base import BaseCommand
 
 from apps.predictions.models import Prediction
+from apps.predictions.services.batch import batch_window_for
 from apps.predictions.services.form import (
     build_form_features,
     expected_goals,
@@ -18,12 +19,20 @@ from apps.predictions.services.signals import (
 
 
 class Command(BaseCommand):
-    """Update features_json.signals from stored / recomputed probs."""
+    """Update features_json.signals (optionally one day only)."""
 
     help = (
-        "Refresh Over 2.5 hybrid pick badges on existing "
-        "predictions (reuses gbm_features or rebuilds form)."
+        "Refresh Over 2.5 hybrid pick badges. "
+        "Use --window tomorrow so Today's tips stay frozen."
     )
+
+    def add_arguments(self, parser) -> None:
+        parser.add_argument(
+            "--window",
+            choices=("today", "tomorrow", "all"),
+            default="all",
+            help="Limit refresh to one calendar-day batch.",
+        )
 
     def handle(self, *args, **options) -> None:
         updated = 0
@@ -33,6 +42,13 @@ class Command(BaseCommand):
             "fixture__home",
             "fixture__away",
         )
+        window = options["window"]
+        if window in ("today", "tomorrow"):
+            start, end = batch_window_for(window)
+            qs = qs.filter(
+                fixture__kickoff_at__gte=start,
+                fixture__kickoff_at__lt=end,
+            )
         for pred in qs.iterator():
             feats = dict(pred.features_json or {})
             league_api_id = None
@@ -73,6 +89,7 @@ class Command(BaseCommand):
             updated += 1
         self.stdout.write(
             self.style.SUCCESS(
-                f"refresh_signals: updated={updated} gbm_rebuilt={rebuilt}",
+                f"refresh_signals: window={window} "
+                f"updated={updated} gbm_rebuilt={rebuilt}",
             ),
         )

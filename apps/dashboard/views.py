@@ -213,7 +213,7 @@ def _render_picks(
 
 @require_GET
 def picks(request: HttpRequest) -> HttpResponse:
-    """Today's locked batch (20:00 → +24h MSK)."""
+    """Today's locked batch (00:00 → +24h MSK)."""
     return _render_picks(request, which="today")
 
 
