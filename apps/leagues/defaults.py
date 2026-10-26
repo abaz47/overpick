@@ -393,6 +393,137 @@ DEFAULT_LEAGUES: list[LeagueSeed] = [
         "country": "Japan",
         "code": "J2",
     },
+    # England lower (high volume / solid O2.5)
+    {
+        "api_id": 41,
+        "name": "League One",
+        "country": "England",
+        "code": "EL1",
+    },
+    {
+        "api_id": 42,
+        "name": "League Two",
+        "country": "England",
+        "code": "EL2",
+    },
+    # Germany 3rd tier
+    {
+        "api_id": 80,
+        "name": "3. Liga",
+        "country": "Germany",
+        "code": "BL3",
+    },
+    # Australia (national top flight only; no single 2nd tier)
+    {
+        "api_id": 188,
+        "name": "A-League",
+        "country": "Australia",
+        "code": "AUS",
+    },
+    # Iceland
+    {
+        "api_id": 164,
+        "name": "Úrvalsdeild",
+        "country": "Iceland",
+        "code": "ICE",
+    },
+    {
+        "api_id": 165,
+        "name": "1. Deild",
+        "country": "Iceland",
+        "code": "ICE2",
+    },
+    # Ireland
+    {
+        "api_id": 357,
+        "name": "Premier Division",
+        "country": "Ireland",
+        "code": "IRL",
+    },
+    {
+        "api_id": 358,
+        "name": "First Division",
+        "country": "Ireland",
+        "code": "IRL2",
+    },
+    # Israel
+    {
+        "api_id": 383,
+        "name": "Ligat Ha'al",
+        "country": "Israel",
+        "code": "ISR",
+    },
+    {
+        "api_id": 382,
+        "name": "Liga Leumit",
+        "country": "Israel",
+        "code": "ISR2",
+    },
+    # South Korea
+    {
+        "api_id": 292,
+        "name": "K League 1",
+        "country": "South-Korea",
+        "code": "KL1",
+    },
+    {
+        "api_id": 293,
+        "name": "K League 2",
+        "country": "South-Korea",
+        "code": "KL2",
+    },
+    # China
+    {
+        "api_id": 169,
+        "name": "Super League",
+        "country": "China",
+        "code": "CSL",
+    },
+    {
+        "api_id": 170,
+        "name": "League One",
+        "country": "China",
+        "code": "CL1",
+    },
+    # Saudi Arabia
+    {
+        "api_id": 307,
+        "name": "Pro League",
+        "country": "Saudi-Arabia",
+        "code": "SPL",
+    },
+    {
+        "api_id": 308,
+        "name": "Division 1",
+        "country": "Saudi-Arabia",
+        "code": "SA1",
+    },
+    # Colombia
+    {
+        "api_id": 239,
+        "name": "Primera A",
+        "country": "Colombia",
+        "code": "COL",
+    },
+    {
+        "api_id": 240,
+        "name": "Primera B",
+        "country": "Colombia",
+        "code": "COL2",
+    },
+    # Chile
+    {
+        "api_id": 265,
+        "name": "Primera División",
+        "country": "Chile",
+        "code": "CHI",
+    },
+    {
+        "api_id": 266,
+        "name": "Primera B",
+        "country": "Chile",
+        "code": "CHI2",
+    },
     # UEFA club competitions (form: all matches; μ: cup)
     {
         "api_id": 2,
